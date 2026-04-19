@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Incident #{{ incident.incident_id }}{% endblock %}
+{% block page_title %}Incident Report #{{ incident.incident_id }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h3>Incident Details</h3>
+    <div class="form-row">
+        <div><span class="text-secondary text-sm">Type:</span> <span class="badge badge-danger">{{ incident.type }}</span></div>
+        <div><span class="text-secondary text-sm">Date/Time:</span> {{ incident.date_time }}</div>
+        <div><span class="text-secondary text-sm">Prison:</span> {{ incident.prison_name or '—' }}</div>
+        <div><span class="text-secondary text-sm">Block:</span> {{ incident.block_name or '—' }}</div>
+        <div><span class="text-secondary text-sm">Cell:</span> {% if incident.cell_id %}#{{ incident.cell_id }}{% else %}—{% endif %}</div>
+        <div><span class="text-secondary text-sm">Reporting Officer:</span> {{ incident.officer_name or '—' }}</div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Description</h3>
+    <p>{{ incident.description or 'No description provided.' }}</p>
+</div>
+
+<div class="card">
+    <h3>Action Taken</h3>
+    <p>{{ incident.action_taken or 'No action documented.' }}</p>
+</div>
+
+{% if involved_inmates %}
+<div class="card">
+    <h3>Inmates Involved</h3>
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Action</th></tr></thead>
+            <tbody>
+            {% for i in involved_inmates %}
+            <tr>
+                <td>{{ i.inmate_id }}</td>
+                <td>{{ i.full_name }}</td>
+                <td><a href="/inmates/{{ i.inmate_id }}" class="btn btn-sm btn-outline">View</a></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if involved_staff %}
+<div class="card">
+    <h3>Staff Involved</h3>
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Role</th></tr></thead>
+            <tbody>
+            {% for s in involved_staff %}
+            <tr>
+                <td>{{ s.national_id }}</td>
+                <td>{{ s.name }}</td>
+                <td>{{ s.role }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<a href="/incidents" class="btn btn-outline">← Back to Incidents</a>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Request Transfer{% endblock %}
+{% block page_title %}Request Inter-Prison Transfer{% endblock %}
+
+{% block content %}
+<!-- PRD 4.3: Prison Manager submits transfer request -->
+<div class="card" style="max-width: 600px;">
+    <form method="POST" action="/transfers/add">
+        <div class="form-group">
+            <label>Inmate *</label>
+            <select name="inmate_id" class="form-control" required>
+                <option value="">— Select Inmate —</option>
+                {% for i in inmates %}
+                    <option value="{{ i.inmate_id }}">{{ i.full_name }} (ID: {{ i.inmate_id }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Destination Prison *</label>
+            <select name="destination_prison" class="form-control" required>
+                <option value="">— Select Destination —</option>
+                {% for p in prisons %}
+                    <option value="{{ p.prison_id }}">{{ p.name }} ({{ p.type }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Reason for Transfer</label>
+            <textarea name="reason" class="form-control" rows="3"
+                      placeholder="Clinical need, security reclassification, overcrowding, court order, etc."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit Transfer Request</button>
+        <a href="/transfers" class="btn btn-outline">Cancel</a>
+    </form>
+</div>
+{% endblock %}

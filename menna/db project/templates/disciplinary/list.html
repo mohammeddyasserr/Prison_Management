@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Disciplinary Logs{% endblock %}
+{% block page_title %}Disciplinary Logs{% endblock %}
+{% block page_actions %}
+    {% if user.role in ['officer', 'prison_manager'] %}
+        <a href="/disciplinary/add" class="btn btn-primary">+ Add Record</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- PRD 6.2: Disciplinary Log — mandatory registry, cannot be deleted -->
+<p class="text-sm text-secondary mb-2">
+    Mandatory registry per PRD 6.2. Records cannot be deleted.
+</p>
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>Log ID</th><th>Inmate</th><th>Punishment</th>
+                <th>Solitary (days)</th><th>Date</th><th>End Date</th>
+                <th>Imposed By</th><th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for log in logs %}
+            <tr>
+                <td>{{ log.log_id }}</td>
+                <td>{{ log.inmate_name }}</td>
+                <td>{{ log.punishment_type }}</td>
+                <td>{{ log.solitary_confinement_duration or '—' }}</td>
+                <td>{{ log.date_imposed }}</td>
+                <td>{{ log.end_date or '—' }}</td>
+                <td>{{ log.imposed_by_name or '—' }}</td>
+                <td class="text-sm">{{ log.notes or '—' }}</td>
+            </tr>
+        {% endfor %}
+        {% if not logs %}
+            <tr><td colspan="8" class="text-center text-muted">No disciplinary records.</td></tr>
+        {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

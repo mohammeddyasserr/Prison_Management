@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Inmates{% endblock %}
+{% block page_title %}Inmate Records{% endblock %}
+{% block page_actions %}
+    {% if user.role == 'super_admin' %}
+        <a href="/inmates/add" class="btn btn-primary">+ Admit New Inmate</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th><th>Full Name</th><th>National ID</th><th>Gender</th>
+                <th>Prison</th><th>Start Date</th><th>Release Date</th><th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for inmate in inmates %}
+            <tr>
+                <td>{{ inmate.inmate_id }}</td>
+                <td><strong>{{ inmate.full_name }}</strong></td>
+                <td>{{ inmate.national_id or '—' }}</td>
+                <td>{{ inmate.gender }}</td>
+                <td>{{ inmate.prison_name or 'Unassigned' }}</td>
+                <td>{{ inmate.start_date or '—' }}</td>
+                <td>{{ inmate.expected_release_date or '—' }}</td>
+                <td class="actions">
+                    <a href="/inmates/{{ inmate.inmate_id }}" class="btn btn-sm btn-outline">View</a>
+                    {% if user.role == 'prison_manager' and not inmate.assigned_cell %}
+                        <a href="/inmates/{{ inmate.inmate_id }}/assign" class="btn btn-sm btn-warning">Assign Cell</a>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        {% if not inmates %}
+            <tr><td colspan="8" class="text-center text-muted">No inmates found.</td></tr>
+        {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

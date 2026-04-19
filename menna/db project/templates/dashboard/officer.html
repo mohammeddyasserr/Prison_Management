@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Officer Dashboard{% endblock %}
+{% block page_title %}Officer Dashboard{% endblock %}
+
+{% block content %}
+<!-- PRD 9.3: Officer Dashboard -->
+
+<!-- KPI Row -->
+<div class="card-grid">
+    <div class="kpi-card">
+        <div class="kpi-label">Assigned Blocks</div>
+        <div class="kpi-value">{{ assigned_blocks|length }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Recent Incidents</div>
+        <div class="kpi-value amber">{{ recent_incidents|length }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Active Solitary</div>
+        <div class="kpi-value red">{{ active_solitary|length }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Upcoming Shifts</div>
+        <div class="kpi-value">{{ my_shifts|length }}</div>
+    </div>
+</div>
+
+<!-- PRD 9.3: Block Occupancy — Cell-by-cell view -->
+<div class="card">
+    <h3>Block Occupancy — Cell View</h3>
+    {% if cells %}
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>Block</th><th>Cell ID</th><th>Occupancy</th><th>Capacity</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for cell in cells %}
+            <tr>
+                <td>{{ cell.block_name }}</td>
+                <td>Cell #{{ cell.cell_id }}</td>
+                <td>{{ cell.current_occupancy }}</td>
+                <td>{{ cell.capacity }}</td>
+                <td>
+                    {% if cell.current_occupancy >= cell.capacity %}
+                        <span class="badge badge-danger">Full</span>
+                    {% elif cell.current_occupancy > 0 %}
+                        <span class="badge badge-warning">Occupied</span>
+                    {% else %}
+                        <span class="badge badge-success">Empty</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <div class="empty-state"><p>No cells assigned to your blocks.</p></div>
+    {% endif %}
+</div>
+
+<div class="card-grid" style="grid-template-columns: 1fr 1fr;">
+    <!-- PRD 9.3: Recent Incidents (past 7 days) -->
+    <div class="card">
+        <h3>Recent Incidents (7 days)</h3>
+        {% if recent_incidents %}
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Type</th><th>Date</th><th>Action</th></tr></thead>
+                <tbody>
+                {% for inc in recent_incidents %}
+                <tr>
+                    <td><span class="badge badge-danger">{{ inc.type }}</span></td>
+                    <td class="text-sm">{{ inc.date_time }}</td>
+                    <td><a href="/incidents/{{ inc.incident_id }}" class="btn btn-sm btn-outline">View</a></td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+            <div class="empty-state"><p>No recent incidents.</p></div>
+        {% endif %}
+    </div>
+
+    <!-- PRD 9.3: Active Solitary Confinement Records -->
+    <div class="card">
+        <h3>Active Solitary Confinement</h3>
+        {% if active_solitary %}
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Inmate</th><th>End Date</th></tr></thead>
+                <tbody>
+                {% for s in active_solitary %}
+                <tr>
+                    <td>{{ s.full_name }}</td>
+                    <td>{{ s.end_date }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+            <div class="empty-state"><p>No active solitary confinement orders.</p></div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- My Shift Schedule (PRD 3.5.1: Officers view own schedule) -->
+<div class="card">
+    <h3>📅 My Upcoming Shifts</h3>
+    {% if my_shifts %}
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>Date</th><th>Shift</th><th>Block</th><th>Time</th></tr></thead>
+            <tbody>
+            {% for s in my_shifts %}
+            <tr>
+                <td>{{ s.date }}</td>
+                <td><span class="badge badge-info">{{ s.shift_type }}</span></td>
+                <td>{{ s.block_name }}</td>
+                <td>{{ s.start_time }} — {{ s.end_time }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <div class="empty-state"><p>No upcoming shifts assigned.</p></div>
+    {% endif %}
+</div>
+{% endblock %}

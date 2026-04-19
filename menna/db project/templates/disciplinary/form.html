@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Add Disciplinary Record{% endblock %}
+{% block page_title %}Add Disciplinary Record{% endblock %}
+
+{% block content %}
+<!-- PRD 6.2: Disciplinary Log entry -->
+<div class="card" style="max-width: 700px;">
+    <form method="POST" action="/disciplinary/add">
+        <div class="form-group">
+            <label>Inmate *</label>
+            <select name="inmate_id" class="form-control" required>
+                <option value="">— Select Inmate —</option>
+                {% for i in inmates %}
+                    <option value="{{ i.inmate_id }}">{{ i.full_name }} (ID: {{ i.inmate_id }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Linked Incident (optional)</label>
+            <select name="incident_id" class="form-control">
+                <option value="0">— No linked incident —</option>
+                {% for inc in incidents %}
+                    <option value="{{ inc.incident_id }}">
+                        #{{ inc.incident_id }} — {{ inc.type }} ({{ inc.date_time }})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Punishment Type *</label>
+            <select name="punishment_type" class="form-control" required>
+                <option>Loss of Privileges</option>
+                <option>Solitary Confinement</option>
+                <option>Transfer to High-Security</option>
+                <option>Restricted Visits</option>
+                <option>Extra Labor</option>
+                <option>Other</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Solitary Confinement Duration (days, max 30 per PRD 10.5)</label>
+            <input type="number" name="solitary_confinement_duration" class="form-control"
+                   min="0" max="30" value="0">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Date Imposed *</label>
+                <input type="date" name="date_imposed" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>End Date</label>
+                <input type="date" name="end_date" class="form-control">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Notes</label>
+            <textarea name="notes" class="form-control" rows="3"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Record Disciplinary Action</button>
+        <a href="/disciplinary" class="btn btn-outline">Cancel</a>
+    </form>
+</div>
+{% endblock %}

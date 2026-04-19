@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visit Request — CPMS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- PRD 3.4 & 5.1: Public Visit Request Portal — No login required -->
+    <div class="public-container">
+        <div class="public-header">
+            <h1>CPMS — Visit Request</h1>
+            <p>Submit a visit request to an inmate. No account is needed.</p>
+        </div>
+
+        {% if success %}
+            <div class="alert alert-success">{{ success }}</div>
+        {% endif %}
+        {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+
+        <div class="card">
+            <form method="POST" action="/visit-request">
+                <!-- PRD 5.1: Required inputs -->
+                <h3 class="mb-2">Inmate Information</h3>
+                <div class="form-group">
+                    <label>Inmate National ID *</label>
+                    <input type="text" name="inmate_national_id" class="form-control" required
+                           placeholder="Enter the inmate's National ID">
+                </div>
+
+                <h3 class="mt-3 mb-2">Your Information</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" name="visitor_name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Your National ID *</label>
+                        <input type="text" name="visitor_national_id" class="form-control" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Relationship to Inmate *</label>
+                        <select name="relationship" class="form-control" required>
+                            <option value="">— Select —</option>
+                            <option>Spouse</option><option>Parent</option>
+                            <option>Sibling</option><option>Friend</option>
+                            <option>Lawyer</option><option>Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Visit Type</label>
+                        <select name="visit_type" class="form-control">
+                            <option value="Regular">Regular Visit</option>
+                            <option value="Legal">Legal Visit (Lawyer Consultation)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="tel" name="phone" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" name="email" class="form-control">
+                    </div>
+                </div>
+
+                <h3 class="mt-3 mb-2">Schedule</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Preferred Date *</label>
+                        <input type="date" name="visit_date" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Preferred Time Slot *</label>
+                        <input type="text" name="time_slot" class="form-control" required
+                               placeholder="e.g. 09:00-10:00">
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary" style="width:100%">Submit Visit Request</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="text-center mt-2">
+            <a href="/login" class="text-sm">← Staff Login</a>
+        </div>
+    </div>
+</body>
+</html>

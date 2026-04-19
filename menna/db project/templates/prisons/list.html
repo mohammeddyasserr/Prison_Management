@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Prisons{% endblock %}
+{% block page_title %}Prison Facilities{% endblock %}
+{% block page_actions %}
+    {% if user.role == 'super_admin' %}
+        <a href="/prisons/add" class="btn btn-primary">+ Add Prison</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th><th>Name</th><th>Location</th><th>Type</th>
+                <th>Security</th><th>Occupancy</th><th>Manager</th><th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for prison in prisons %}
+            <tr>
+                <td>{{ prison.prison_id }}</td>
+                <td><strong>{{ prison.name }}</strong></td>
+                <td>{{ prison.location }}</td>
+                <td>{{ prison.type }}</td>
+                <td><span class="badge badge-info">{{ prison.security_level }}</span></td>
+                <td>
+                    {{ prison.current_occupancy }}/{{ prison.total_capacity }}
+                    {% set rate = (prison.current_occupancy * 100 / prison.total_capacity) if prison.total_capacity > 0 else 0 %}
+                    <span class="badge {% if rate > 90 %}badge-danger{% elif rate >= 75 %}badge-warning{% else %}badge-success{% endif %}">
+                        {{ rate|round(1) }}%
+                    </span>
+                </td>
+                <td>{{ prison.manager_name or '—' }}</td>
+                <td class="actions">
+                    <a href="/prisons/{{ prison.prison_id }}" class="btn btn-sm btn-outline">View</a>
+                    {% if user.role == 'super_admin' %}
+                        <a href="/prisons/{{ prison.prison_id }}/edit" class="btn btn-sm btn-primary">Edit</a>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        {% if not prisons %}
+            <tr><td colspan="8" class="text-center text-muted">No prisons found.</td></tr>
+        {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

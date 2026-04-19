@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Assign Cell — {{ inmate.full_name }}{% endblock %}
+{% block page_title %}Assign Cell — {{ inmate.full_name }}{% endblock %}
+
+{% block content %}
+<!-- PRD 4.1: Stage 2 — Prison Manager assigns block/cell -->
+<div class="card" style="max-width: 600px;">
+    <p class="text-secondary mb-2">
+        PRD 4.1 Stage 2: The Prison Manager assigns the inmate to a specific block and cell.
+    </p>
+    <form method="POST" action="/inmates/{{ inmate.inmate_id }}/assign">
+        <div class="form-group">
+            <label>Block</label>
+            <select name="block_id" id="blockSelect" class="form-control" required onchange="updateCells()">
+                <option value="">— Select Block —</option>
+                {% for block in blocks %}
+                    <option value="{{ block.block_id }}">
+                        {{ block.name }} ({{ block.security_level }}) — {{ block.current_occupancy }}/{{ block.capacity }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Cell</label>
+            <select name="cell_id" id="cellSelect" class="form-control" required>
+                <option value="">— Select Block First —</option>
+            </select>
+        </div>
+        <div class="mt-2">
+            <button type="submit" class="btn btn-primary">Assign Cell</button>
+            <a href="/inmates/{{ inmate.inmate_id }}" class="btn btn-outline">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const blockCells = {{ block_cells|tojson }};
+
+    function updateCells() {
+        const blockId = document.getElementById('blockSelect').value;
+        const cellSelect = document.getElementById('cellSelect');
+        cellSelect.innerHTML = '<option value="">— Select Cell —</option>';
+
+        if (blockId && blockCells[blockId]) {
+            blockCells[blockId].forEach(cell => {
+                const opt = document.createElement('option');
+                opt.value = cell.cell_id;
+                opt.textContent = `Cell #${cell.cell_id} (${cell.current_occupancy}/${cell.capacity})`;
+                cellSelect.appendChild(opt);
+            });
+        }
+    }
+</script>
+{% endblock %}

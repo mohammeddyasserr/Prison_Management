@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Staff Management{% endblock %}
+{% block page_title %}Staff Management{% endblock %}
+{% block page_actions %}
+    {% if user.role == 'super_admin' %}
+        <a href="/officers/add" class="btn btn-primary">+ Add Staff</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>National ID</th><th>Name</th><th>Role</th><th>Email</th>
+                <th>Phone</th><th>Prison</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for o in officers %}
+            <tr>
+                <td>{{ o.national_id }}</td>
+                <td><strong>{{ o.name }}</strong></td>
+                <td>
+                    <span class="badge {% if o.role == 'prison_manager' %}badge-info{% else %}badge-success{% endif %}">
+                        {{ o.role|replace('_', ' ')|title }}
+                    </span>
+                </td>
+                <td>{{ o.email or '—' }}</td>
+                <td>{{ o.phone or '—' }}</td>
+                <td>{{ o.prison_name or 'Unassigned' }}</td>
+            </tr>
+        {% endfor %}
+        {% if not officers %}
+            <tr><td colspan="6" class="text-center text-muted">No staff found.</td></tr>
+        {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
