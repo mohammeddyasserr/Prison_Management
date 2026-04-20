@@ -96,3 +96,5 @@ out/
 
 # Vite specific (if using Vite for React)
 !/.env.example
+menna/db_project/cpms.db
+menna/db_project/cpms.db
