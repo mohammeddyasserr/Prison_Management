@@ -2,6 +2,6 @@ how to run the app:
 cd menna
 cd db_project
 python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
+source venv/bin/activate
+pip install -r requirements.txt --no-user
 uvicorn main:app --reload

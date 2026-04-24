@@ -48,6 +48,40 @@ async def list_transfers(request: Request):
     })
 
 
+@router.get("/api/list")
+async def api_list_transfers(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return {"error": "Unauthorized", "transfers": []}
+
+    db = get_db()
+    if user["role"] == "super_admin":
+        transfers = db.execute("""
+            SELECT t.*, i.full_name as inmate_name,
+                   p1.name as from_prison, p2.name as to_prison
+            FROM transfers t
+            JOIN inmates i ON t.inmate_id = i.inmate_id
+            JOIN prisons p1 ON t.requesting_prison = p1.prison_id
+            JOIN prisons p2 ON t.destination_prison = p2.prison_id
+            ORDER BY CASE t.status WHEN 'Pending' THEN 0 ELSE 1 END, t.transfer_id DESC
+        """).fetchall()
+    else:
+        transfers = db.execute("""
+            SELECT t.*, i.full_name as inmate_name,
+                   p1.name as from_prison, p2.name as to_prison
+            FROM transfers t
+            JOIN inmates i ON t.inmate_id = i.inmate_id
+            JOIN prisons p1 ON t.requesting_prison = p1.prison_id
+            JOIN prisons p2 ON t.destination_prison = p2.prison_id
+            WHERE t.requesting_prison = ?
+            ORDER BY t.transfer_id DESC
+        """, (user["prison_id"],)).fetchall()
+    db.close()
+    
+    from database import rows_to_dicts
+    return {"transfers": rows_to_dicts(transfers)}
+
+
 @router.get("/add")
 async def add_transfer_form(request: Request):
     """PRD 4.3: Prison Manager submits transfer request."""
@@ -67,6 +101,27 @@ async def add_transfer_form(request: Request):
     return templates.TemplateResponse("transfers/form.html", {
         "request": request, "user": user, "inmates": inmates, "prisons": prisons
     })
+
+
+@router.get("/api/form-data")
+async def api_transfer_form_data(request: Request):
+    user = get_current_user(request)
+    if not user or not check_role(user, "prison_manager"):
+        return {"error": "Unauthorized", "inmates": [], "prisons": []}
+
+    db = get_db()
+    inmates = db.execute("""
+        SELECT * FROM inmates WHERE assigned_prison = ? AND status = 'active'
+    """, (user["prison_id"],)).fetchall()
+    prisons = db.execute("""
+        SELECT * FROM prisons WHERE prison_id != ?
+    """, (user["prison_id"],)).fetchall()
+    from database import rows_to_dicts
+    db.close()
+    return {
+        "inmates": rows_to_dicts(inmates),
+        "prisons": rows_to_dicts(prisons)
+    }
 
 
 @router.post("/add")

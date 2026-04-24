@@ -44,6 +44,36 @@ async def list_disciplinary(request: Request):
     })
 
 
+@router.get("/api/list")
+async def api_list_disciplinary(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return {"error": "Unauthorized", "logs": []}
+
+    db = get_db()
+    if user["role"] == "super_admin":
+        logs = db.execute("""
+            SELECT dl.*, i.full_name as inmate_name, u.name as imposed_by_name
+            FROM disciplinary_logs dl
+            JOIN inmates i ON dl.inmate_id = i.inmate_id
+            LEFT JOIN users u ON dl.imposed_by = u.national_id
+            ORDER BY dl.date_imposed DESC
+        """).fetchall()
+    else:
+        logs = db.execute("""
+            SELECT dl.*, i.full_name as inmate_name, u.name as imposed_by_name
+            FROM disciplinary_logs dl
+            JOIN inmates i ON dl.inmate_id = i.inmate_id
+            LEFT JOIN users u ON dl.imposed_by = u.national_id
+            WHERE i.assigned_prison = ?
+            ORDER BY dl.date_imposed DESC
+        """, (user["prison_id"],)).fetchall()
+    db.close()
+    
+    from database import rows_to_dicts
+    return {"logs": rows_to_dicts(logs)}
+
+
 @router.get("/add")
 async def add_disciplinary_form(request: Request):
     user = get_current_user(request)
@@ -62,6 +92,27 @@ async def add_disciplinary_form(request: Request):
     return templates.TemplateResponse("disciplinary/form.html", {
         "request": request, "user": user, "inmates": inmates, "incidents": incidents
     })
+
+
+@router.get("/api/form-data")
+async def api_disciplinary_form_data(request: Request):
+    user = get_current_user(request)
+    if not user or not check_role(user, "officer", "prison_manager"):
+        return {"error": "Unauthorized", "inmates": [], "incidents": []}
+
+    db = get_db()
+    inmates = db.execute("""
+        SELECT * FROM inmates WHERE assigned_prison = ? AND status = 'active'
+    """, (user["prison_id"],)).fetchall()
+    incidents = db.execute("""
+        SELECT * FROM incidents WHERE prison_id = ? ORDER BY date_time DESC
+    """, (user["prison_id"],)).fetchall()
+    from database import rows_to_dicts
+    db.close()
+    return {
+        "inmates": rows_to_dicts(inmates),
+        "incidents": rows_to_dicts(incidents)
+    }
 
 
 @router.post("/add")

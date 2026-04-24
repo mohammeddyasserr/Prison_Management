@@ -76,6 +76,61 @@ async def list_shifts(request: Request):
     })
 
 
+@router.get("/api/list")
+async def api_list_shifts(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return {"error": "Unauthorized", "shifts": [], "officers": [], "blocks": [], "shift_times": SHIFT_TIMES}
+
+    db = get_db()
+    if user["role"] == "officer":
+        shifts = db.execute("""
+            SELECT sa.*, b.name as block_name, p.name as prison_name
+            FROM shift_assignments sa
+            JOIN blocks b ON sa.block_id = b.block_id
+            JOIN prisons p ON b.prison_id = p.prison_id
+            WHERE sa.officer_id = ?
+            ORDER BY sa.date DESC, sa.start_time
+        """, (user["national_id"],)).fetchall()
+    elif user["role"] == "prison_manager":
+        shifts = db.execute("""
+            SELECT sa.*, b.name as block_name, u.name as officer_name
+            FROM shift_assignments sa
+            JOIN blocks b ON sa.block_id = b.block_id
+            JOIN users u ON sa.officer_id = u.national_id
+            WHERE b.prison_id = ?
+            ORDER BY sa.date DESC, sa.start_time
+        """, (user["prison_id"],)).fetchall()
+    else:
+        shifts = db.execute("""
+            SELECT sa.*, b.name as block_name, u.name as officer_name, p.name as prison_name
+            FROM shift_assignments sa
+            JOIN blocks b ON sa.block_id = b.block_id
+            JOIN users u ON sa.officer_id = u.national_id
+            JOIN prisons p ON b.prison_id = p.prison_id
+            ORDER BY sa.date DESC, sa.start_time
+        """).fetchall()
+
+    officers = []
+    blocks = []
+    if check_role(user, "prison_manager"):
+        officers = db.execute("""
+            SELECT * FROM users WHERE prison_id = ? AND role = 'officer'
+        """, (user["prison_id"],)).fetchall()
+        blocks = db.execute("""
+            SELECT * FROM blocks WHERE prison_id = ?
+        """, (user["prison_id"],)).fetchall()
+    db.close()
+
+    from database import rows_to_dicts
+    return {
+        "shifts": rows_to_dicts(shifts),
+        "officers": rows_to_dicts(officers),
+        "blocks": rows_to_dicts(blocks),
+        "shift_times": SHIFT_TIMES
+    }
+
+
 @router.post("/add")
 async def add_shift(
     request: Request,

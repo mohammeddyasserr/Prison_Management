@@ -53,6 +53,76 @@ async def healthcare_overview(request: Request):
     })
 
 
+@router.get("/api/form-data")
+async def api_healthcare_form_data(request: Request):
+    user = get_current_user(request)
+    if not user or not check_role(user, "super_admin", "prison_manager"):
+        return {"error": "Unauthorized", "inmates": [], "doctors": [], "prisons": []}
+
+    db = get_db()
+    if user["role"] == "super_admin":
+        inmates = db.execute("SELECT * FROM inmates WHERE status = 'active'").fetchall()
+        doctors = db.execute("SELECT * FROM doctors").fetchall()
+    else:
+        inmates = db.execute("""
+            SELECT * FROM inmates WHERE assigned_prison = ? AND status = 'active'
+        """, (user["prison_id"],)).fetchall()
+        doctors = db.execute("""
+            SELECT * FROM doctors WHERE prison_id = ?
+        """, (user["prison_id"],)).fetchall()
+    prisons = db.execute("SELECT * FROM prisons").fetchall()
+    from database import rows_to_dicts
+    db.close()
+    return {
+        "inmates": rows_to_dicts(inmates),
+        "doctors": rows_to_dicts(doctors),
+        "prisons": rows_to_dicts(prisons)
+    }
+
+
+@router.get("/api/overview")
+async def api_healthcare_overview(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return {"error": "Unauthorized", "doctors": [], "visits": []}
+
+    db = get_db()
+    if user["role"] == "super_admin":
+        doctors = db.execute("""
+            SELECT d.*, p.name as prison_name FROM doctors d
+            JOIN prisons p ON d.prison_id = p.prison_id
+        """).fetchall()
+        visits = db.execute("""
+            SELECT mv.*, i.full_name as inmate_name, d.name as doctor_name, p.name as prison_name
+            FROM medical_visits mv
+            JOIN inmates i ON mv.inmate_id = i.inmate_id
+            JOIN doctors d ON mv.doctor_id = d.national_id
+            JOIN prisons p ON d.prison_id = p.prison_id
+            ORDER BY mv.date_time DESC LIMIT 50
+        """).fetchall()
+    else:
+        doctors = db.execute("""
+            SELECT d.*, p.name as prison_name FROM doctors d
+            JOIN prisons p ON d.prison_id = p.prison_id
+            WHERE d.prison_id = ?
+        """, (user["prison_id"],)).fetchall()
+        visits = db.execute("""
+            SELECT mv.*, i.full_name as inmate_name, d.name as doctor_name
+            FROM medical_visits mv
+            JOIN inmates i ON mv.inmate_id = i.inmate_id
+            JOIN doctors d ON mv.doctor_id = d.national_id
+            WHERE d.prison_id = ?
+            ORDER BY mv.date_time DESC LIMIT 50
+        """, (user["prison_id"],)).fetchall()
+    db.close()
+    
+    from database import rows_to_dicts
+    return {
+        "doctors": rows_to_dicts(doctors),
+        "visits": rows_to_dicts(visits)
+    }
+
+
 @router.get("/doctors/add")
 async def add_doctor_form(request: Request):
     user = get_current_user(request)

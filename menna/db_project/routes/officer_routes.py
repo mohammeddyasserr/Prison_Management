@@ -46,6 +46,33 @@ async def list_officers(request: Request):
     })
 
 
+@router.get("/api/list")
+async def api_list_officers(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return {"error": "Unauthorized", "officers": []}
+
+    db = get_db()
+    if user["role"] == "super_admin":
+        officers = db.execute("""
+            SELECT u.*, p.name as prison_name
+            FROM users u LEFT JOIN prisons p ON u.prison_id = p.prison_id
+            WHERE u.role IN ('officer', 'prison_manager')
+            ORDER BY u.role, u.name
+        """).fetchall()
+    else:
+        officers = db.execute("""
+            SELECT u.*, p.name as prison_name
+            FROM users u LEFT JOIN prisons p ON u.prison_id = p.prison_id
+            WHERE u.prison_id = ? AND u.role IN ('officer', 'prison_manager')
+            ORDER BY u.role, u.name
+        """, (user["prison_id"],)).fetchall()
+    db.close()
+    
+    from database import rows_to_dicts
+    return {"officers": rows_to_dicts(officers)}
+
+
 @router.get("/add")
 async def add_officer_form(request: Request):
     user = get_current_user(request)
@@ -58,6 +85,19 @@ async def add_officer_form(request: Request):
     return templates.TemplateResponse("officers/form.html", {
         "request": request, "user": user, "prisons": prisons, "officer": None
     })
+
+
+@router.get("/api/form-data")
+async def api_officer_form_data(request: Request):
+    user = get_current_user(request)
+    if not user or not check_role(user, "super_admin"):
+        return {"error": "Unauthorized", "prisons": []}
+
+    db = get_db()
+    prisons = db.execute("SELECT * FROM prisons").fetchall()
+    from database import rows_to_dicts
+    db.close()
+    return {"prisons": rows_to_dicts(prisons)}
 
 
 @router.post("/add")
