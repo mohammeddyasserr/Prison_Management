@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
 import { postForm } from '../../lib/http';
+import { getPrisons } from '../../data/mockData';
+
 
 export const DoctorForm = () => {
   const navigate = useNavigate();
@@ -16,18 +18,8 @@ export const DoctorForm = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/healthcare/api/form-data');
-        const result = await response.json();
-        setPrisons(result.prisons || []);
-      } catch (error) {
-        console.error("Failed to fetch prisons:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    setPrisons(getPrisons());
+    setLoading(false);
   }, []);
 
   const handleChange = (e) => {
@@ -41,38 +33,38 @@ export const DoctorForm = () => {
     navigate('/healthcare');
   };
 
-  if (loading) return <div style={{padding: '40px', textAlign: 'center'}}>Loading...</div>;
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
 
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>Add Doctor</h1>
-      
-      <div style={{background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '600px'}}>
+
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '600px' }}>
         <form onSubmit={handleSubmit}>
-          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px'}}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
             <div>
-              <label style={{display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px'}}>National ID *</label>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>National ID *</label>
               <input type="text" name="national_id" value={formData.national_id} onChange={handleChange} required className={styles.formControl} />
             </div>
             <div>
-              <label style={{display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px'}}>Name *</label>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Name *</label>
               <input type="text" name="name" value={formData.name} onChange={handleChange} required className={styles.formControl} />
             </div>
           </div>
 
-          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px'}}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
             <div>
-              <label style={{display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px'}}>Address</label>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Address</label>
               <input type="text" name="address" value={formData.address} onChange={handleChange} className={styles.formControl} />
             </div>
             <div>
-              <label style={{display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px'}}>Phone</label>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Phone</label>
               <input type="text" name="phone" value={formData.phone} onChange={handleChange} className={styles.formControl} />
             </div>
           </div>
 
-          <div style={{marginBottom: '32px'}}>
-            <label style={{display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px'}}>Assigned Prison *</label>
+          <div style={{ marginBottom: '32px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Assigned Prison *</label>
             <select name="prison_id" value={formData.prison_id} onChange={handleChange} required className={styles.formControl}>
               <option value="">— Select Prison —</option>
               {prisons.map(p => (
@@ -81,7 +73,7 @@ export const DoctorForm = () => {
             </select>
           </div>
 
-          <div style={{display: 'flex', gap: '12px', paddingTop: '20px', borderTop: '1px solid var(--border-color)'}}>
+          <div style={{ display: 'flex', gap: '12px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
             <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>Add Doctor</button>
             <Link to="/healthcare" className={`${styles.btn} ${styles.btnOutline}`}>Cancel</Link>
           </div>

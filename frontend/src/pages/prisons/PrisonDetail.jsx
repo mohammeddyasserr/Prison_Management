@@ -4,6 +4,7 @@ import { Building2, Shield, Info, Layers, Plus } from 'lucide-react';
 import styles from '../EntityStyles.module.css';
 import { hasRole } from '../../lib/auth';
 import { postForm } from '../../lib/http';
+import { getPrisonDetail, getOfficers } from '../../data/mockData';
 
 export const PrisonDetail = () => {
   const { id } = useParams();
@@ -11,24 +12,18 @@ export const PrisonDetail = () => {
   const [loading, setLoading] = useState(true);
   const [blockForm, setBlockForm] = useState({
     name: '',
-    capacity: '',
     security_level: 'Maximum',
   });
   const [cellCapacityByBlock, setCellCapacityByBlock] = useState({});
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch(`/api/prisons/api/detail/${id}`);
-        const result = await response.json();
-        setData(result);
-      } catch (error) {
-        console.error("Failed to fetch prison details:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    const result = getPrisonDetail(id);
+    if (result) {
+      const officers = getOfficers();
+      result.prison.manager_name = officers.find(o => o.national_id === result.prison.manager_id)?.name || null;
+    }
+    setData(result);
+    setLoading(false);
   }, [id]);
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Prison Details...</div>;
@@ -154,10 +149,6 @@ export const PrisonDetail = () => {
               <div>
                 <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Block Name</label>
                 <input type="text" value={blockForm.name} onChange={(e) => setBlockForm((current) => ({ ...current, name: e.target.value }))} placeholder="e.g. Block A" style={{ width: '100%', padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }} required />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Capacity</label>
-                <input type="number" value={blockForm.capacity} onChange={(e) => setBlockForm((current) => ({ ...current, capacity: e.target.value }))} placeholder="e.g. 50" style={{ width: '100%', padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }} required />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Security Level</label>

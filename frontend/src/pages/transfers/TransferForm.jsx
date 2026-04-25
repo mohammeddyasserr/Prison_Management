@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
 import { postForm } from '../../lib/http';
+import { getInmates, getPrisons } from '../../data/mockData';
+
 
 export const TransferForm = () => {
   const navigate = useNavigate();
@@ -14,18 +16,11 @@ export const TransferForm = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/transfers/api/form-data');
-        const result = await response.json();
-        setData(result);
-      } catch (error) {
-        console.error("Failed to fetch form data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    setData({
+      inmates: getInmates().filter(i => i.status === 'active'),
+      prisons: getPrisons(),
+    });
+    setLoading(false);
   }, []);
 
   const handleChange = (e) => {
@@ -39,16 +34,16 @@ export const TransferForm = () => {
     navigate('/transfers');
   };
 
-  if (loading) return <div style={{padding: '40px', textAlign: 'center'}}>Loading...</div>;
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
 
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>Request Inter-Prison Transfer</h1>
-      
-      <div style={{background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '600px'}}>
+
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '600px' }}>
         <form onSubmit={handleSubmit}>
-          <div style={{marginBottom: '20px'}}>
-            <label style={{display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px'}}>Inmate *</label>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Inmate *</label>
             <select name="inmate_id" value={formData.inmate_id} onChange={handleChange} required className={styles.formControl}>
               <option value="">— Select Inmate —</option>
               {data.inmates.map(i => (
@@ -57,8 +52,8 @@ export const TransferForm = () => {
             </select>
           </div>
 
-          <div style={{marginBottom: '20px'}}>
-            <label style={{display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px'}}>Destination Prison *</label>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Destination Prison *</label>
             <select name="destination_prison" value={formData.destination_prison} onChange={handleChange} required className={styles.formControl}>
               <option value="">— Select Destination —</option>
               {data.prisons.map(p => (
@@ -67,12 +62,12 @@ export const TransferForm = () => {
             </select>
           </div>
 
-          <div style={{marginBottom: '32px'}}>
-            <label style={{display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px'}}>Reason for Transfer</label>
+          <div style={{ marginBottom: '32px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Reason for Transfer</label>
             <textarea name="reason" value={formData.reason} onChange={handleChange} rows="3" className={styles.formControl} placeholder="Clinical need, security reclassification, overcrowding, court order, etc."></textarea>
           </div>
 
-          <div style={{display: 'flex', gap: '12px', paddingTop: '20px', borderTop: '1px solid var(--border-color)'}}>
+          <div style={{ display: 'flex', gap: '12px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
             <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>Submit Transfer Request</button>
             <Link to="/transfers" className={`${styles.btn} ${styles.btnOutline}`}>Cancel</Link>
           </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Users, Building, AlertTriangle, Clock, Activity } from 'lucide-react';
 import { KPICard } from '../../components/dashboard/KPICard';
+import { getDashboardData } from '../../data/mockData';
 import styles from './DashboardStyles.module.css';
 
 export const SuperAdminDashboard = () => {
@@ -10,8 +11,7 @@ export const SuperAdminDashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('/api/dashboard/superadmin');
-        const result = await response.json();
+        const result = getDashboardData('super_admin'); // ← CHANGED
         setData(result);
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
@@ -21,6 +21,8 @@ export const SuperAdminDashboard = () => {
     };
     fetchData();
   }, []);
+
+
 
   if (loading) return (
     <div className={styles.loading}>Connecting to secure network...</div>
@@ -53,7 +55,7 @@ export const SuperAdminDashboard = () => {
       value: totalInmates.toLocaleString(),
       icon: Users,
       color: 'var(--color-success)',
-      trend: totalInmates > 0 ? 'up' : 'normal',
+      trend: occupancyRate > 85 ? 'up' : 'normal',   // up arrow = high occupancy = warning
       trendValue: `${occupancyRate}% capacity`,
     },
     {
@@ -61,7 +63,7 @@ export const SuperAdminDashboard = () => {
       value: pendingTransfers.toString(),
       icon: Clock,
       color: 'var(--color-warning)',
-      trend: pendingTransfers > 0 ? 'down' : 'normal',
+      trend: pendingTransfers > 0 ? 'up' : 'normal',  // up = there are pending = needs attention
       trendValue: `${approvedTransfers} approved`,
     },
     {
@@ -69,7 +71,7 @@ export const SuperAdminDashboard = () => {
       value: alertsCount.toString(),
       icon: AlertTriangle,
       color: 'var(--color-danger)',
-      trend: alertsCount > 0 ? 'down' : 'normal',
+      trend: alertsCount > 0 ? 'up' : 'normal',       // up = alerts exist = bad
       trendValue: `${alertShare}% flagged`,
     },
   ];
@@ -109,8 +111,8 @@ export const SuperAdminDashboard = () => {
                     <span className={`${styles.rateValue} ${rateClass}`}>{rate}%</span>
                   </div>
                   <div className={styles.occupancyBar}>
-                    <div 
-                      className={`${styles.occupancyFill} ${rateClass}`} 
+                    <div
+                      className={`${styles.occupancyFill} ${rateClass}`}
                       style={{ width: `${rate}%` }}
                     />
                   </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
 import { postForm } from '../../lib/http';
+import { getInmates, getDoctors } from '../../data/mockData';
 
 export const MedicalVisitForm = () => {
   const navigate = useNavigate();
@@ -16,18 +17,11 @@ export const MedicalVisitForm = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/healthcare/api/form-data');
-        const result = await response.json();
-        setData(result);
-      } catch (error) {
-        console.error("Failed to fetch form data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    setData({
+      inmates: getInmates().filter(i => i.status === 'active'),
+      doctors: getDoctors(),
+    });
+    setLoading(false);
   }, []);
 
   const handleChange = (e) => {
@@ -41,16 +35,16 @@ export const MedicalVisitForm = () => {
     navigate('/healthcare');
   };
 
-  if (loading) return <div style={{padding: '40px', textAlign: 'center'}}>Loading...</div>;
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
 
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>Record Medical Visit</h1>
-      
-      <div style={{background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '600px'}}>
+
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '600px' }}>
         <form onSubmit={handleSubmit}>
-          <div style={{marginBottom: '20px'}}>
-            <label style={{display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px'}}>Inmate *</label>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Inmate *</label>
             <select name="inmate_id" value={formData.inmate_id} onChange={handleChange} required className={styles.formControl}>
               <option value="">— Select Inmate —</option>
               {data.inmates.map(i => (
@@ -59,8 +53,8 @@ export const MedicalVisitForm = () => {
             </select>
           </div>
 
-          <div style={{marginBottom: '20px'}}>
-            <label style={{display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px'}}>Doctor *</label>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Doctor *</label>
             <select name="doctor_id" value={formData.doctor_id} onChange={handleChange} required className={styles.formControl}>
               <option value="">— Select Doctor —</option>
               {data.doctors.map(d => (
@@ -69,22 +63,22 @@ export const MedicalVisitForm = () => {
             </select>
           </div>
 
-          <div style={{marginBottom: '20px'}}>
-            <label style={{display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px'}}>Date & Time *</label>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Date & Time *</label>
             <input type="datetime-local" name="date_time" value={formData.date_time} onChange={handleChange} required className={styles.formControl} />
           </div>
 
-          <div style={{marginBottom: '20px'}}>
-            <label style={{display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px'}}>Diagnosis</label>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Diagnosis</label>
             <input type="text" name="diagnosis" value={formData.diagnosis} onChange={handleChange} className={styles.formControl} />
           </div>
 
-          <div style={{marginBottom: '32px'}}>
-            <label style={{display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px'}}>Description / Notes</label>
+          <div style={{ marginBottom: '32px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Description / Notes</label>
             <textarea name="description" value={formData.description} onChange={handleChange} rows="3" className={styles.formControl}></textarea>
           </div>
 
-          <div style={{display: 'flex', gap: '12px', paddingTop: '20px', borderTop: '1px solid var(--border-color)'}}>
+          <div style={{ display: 'flex', gap: '12px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
             <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>Record Visit</button>
             <Link to="/healthcare" className={`${styles.btn} ${styles.btnOutline}`}>Cancel</Link>
           </div>

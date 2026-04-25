@@ -3,38 +3,33 @@ import { Plus, Check, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
 import { hasRole } from '../../lib/auth';
-import { postForm } from '../../lib/http';
+import { getTransfers, getPrisons, getInmates } from '../../data/mockData';
 
 export const TransfersList = () => {
   const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/transfers/api/list');
-        const result = await response.json();
-        setTransfers(result.transfers || []);
-      } catch (error) {
-        console.error("Failed to fetch transfers:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    const transfers = getTransfers();
+    const prisons = getPrisons();
+    const inmates = getInmates();
+    const enriched = transfers.map(t => ({
+      ...t,
+      inmate_name: inmates.find(i => i.inmate_id === t.inmate_id)?.full_name || '—',
+      from_prison: prisons.find(p => p.prison_id === t.requesting_prison)?.name || '—',
+      to_prison: prisons.find(p => p.prison_id === t.destination_prison)?.name || '—',
+    }));
+    setTransfers(enriched);
+    setLoading(false);
   }, []);
 
-  if (loading) return <div style={{padding: '40px', textAlign: 'center'}}>Loading Transfer Requests...</div>;
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Transfer Requests...</div>;
 
-  const handleTransferAction = async (transferId, action) => {
-    await postForm(`/transfers/${transferId}/${action}`, {});
+  const handleTransferAction = (transferId, action) => {
     setTransfers((current) =>
       current.map((transfer) =>
         transfer.transfer_id === transferId
-          ? {
-              ...transfer,
-              status: action === 'approve' ? 'Approved' : 'Denied',
-            }
+          ? { ...transfer, status: action === 'approve' ? 'Approved' : 'Denied' }
           : transfer
       )
     );
@@ -52,7 +47,17 @@ export const TransfersList = () => {
       </div>
 
       <div className={styles.tableWrapper}>
-        <table className={styles.table}>
+        <table className={styles.table} style={{ tableLayout: 'fixed', width: '100%' }}>
+          <colgroup>
+            <col style={{ width: '4%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '15%' }} />
+            <col style={{ width: '15%' }} />
+            <col style={{ width: '19%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '12%' }} />
+            {hasRole('super_admin') && <col style={{ width: '13%' }} />}
+          </colgroup>
           <thead>
             <tr>
               <th>ID</th>
@@ -61,50 +66,65 @@ export const TransfersList = () => {
               <th>To</th>
               <th>Reason</th>
               <th>Status</th>
+              <th>Date</th>
               {hasRole('super_admin') && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {transfers.length > 0 ? transfers.map((t) => (
               <tr key={t.transfer_id}>
-                <td>{t.transfer_id}</td>
-                <td>{t.inmate_name}</td>
-                <td>{t.from_prison}</td>
-                <td>{t.to_prison}</td>
-                <td style={{fontSize: '0.8rem', maxWidth: '200px'}}>{t.reason || '—'}</td>
-                <td>
-                  <span className={`${styles.badge} ${t.status === 'Approved' ? styles.badgeSuccess : t.status === 'Denied' ? styles.badgeDanger : styles.badgeWarning}`}>
+                <td style={{ verticalAlign: 'middle' }}>{t.transfer_id}</td>
+                <td style={{ verticalAlign: 'middle', wordBreak: 'break-word' }}>{t.inmate_name}</td>
+                <td style={{ verticalAlign: 'middle', wordBreak: 'break-word' }}>{t.from_prison}</td>
+                <td style={{ verticalAlign: 'middle', wordBreak: 'break-word' }}>{t.to_prison}</td>
+                <td style={{ verticalAlign: 'middle', wordBreak: 'break-word', fontSize: '0.85rem' }}>{t.reason || '—'}</td>
+                <td style={{ verticalAlign: 'middle' }}>
+                  <span className={`${styles.badge} ${t.status === 'Approved' ? styles.badgeSuccess :
+                    t.status === 'Denied' ? styles.badgeDanger :
+                      styles.badgeWarning
+                    }`}>
                     {t.status}
                   </span>
-                  {t.approval_date && <div style={{fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '4px'}}>{t.approval_date}</div>}
+                </td>
+                <td style={{ verticalAlign: 'middle', fontSize: '0.8rem', color: 'var(--text-secondary)', wordBreak: 'break-word' }}>
+                  {t.approval_date || '—'}
                 </td>
                 {hasRole('super_admin') && (
-                  <td className={styles.actions}>
-                    {t.status === 'Pending' ? (
-                      <>
-                        <button
-                          className={`${styles.btn} ${styles.badgeSuccess}`}
-                          style={{border: 'none', cursor: 'pointer'}}
-                          onClick={() => handleTransferAction(t.transfer_id, 'approve')}
-                        >
-                          <Check size={14} /> Approve
-                        </button>
-                        <button
-                          className={`${styles.btn} ${styles.badgeDanger}`}
-                          style={{border: 'none', cursor: 'pointer'}}
-                          onClick={() => handleTransferAction(t.transfer_id, 'deny')}
-                        >
-                          <X size={14} /> Deny
-                        </button>
-                      </>
-                    ) : (
-                      <span style={{color: 'var(--text-muted)'}}>—</span>
-                    )}
+                  <td style={{ verticalAlign: 'middle' }}>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      {t.status === 'Pending' ? (
+                        <>
+                          <button
+                            className={`${styles.btn} ${styles.badgeSuccess}`}
+                            style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+                            onClick={() => handleTransferAction(t.transfer_id, 'approve')}
+                          >
+                            <Check size={13} /> Approve
+                          </button>
+                          <button
+                            className={`${styles.btn} ${styles.badgeDanger}`}
+                            style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+                            onClick={() => handleTransferAction(t.transfer_id, 'deny')}
+                          >
+                            <X size={13} /> Deny
+                          </button>
+                        </>
+                      ) : (
+                        <span style={{ color: 'var(--text-secondary)' }}>—</span>
+                      )}
+                    </div>
                   </td>
                 )}
               </tr>
             )) : (
-              <tr><td colSpan={hasRole('super_admin') ? '7' : '6'} style={{textAlign: 'center', padding: '20px', color: 'var(--text-secondary)'}}>No transfer requests found.</td></tr>
+              <tr>
+                <td
+                  colSpan={hasRole('super_admin') ? '8' : '7'}
+                  style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}
+                >
+                  No transfer requests found.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>

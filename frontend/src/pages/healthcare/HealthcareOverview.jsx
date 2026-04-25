@@ -3,27 +3,34 @@ import { Plus, Activity, HeartPulse } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
 import { hasRole } from '../../lib/auth';
+import { getDoctors, getMedicalVisits, getInmates, getPrisons } from '../../data/mockData';
 
 export const HealthcareOverview = () => {
   const [data, setData] = useState({ doctors: [], visits: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/healthcare/api/overview');
-        const result = await response.json();
-        setData(result);
-      } catch (error) {
-        console.error("Failed to fetch healthcare data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    const doctors = getDoctors();
+    const visits = getMedicalVisits();
+    const inmates = getInmates();
+    const prisons = getPrisons();
+
+    const enrichedDoctors = doctors.map(d => ({
+      ...d,
+      prison_name: prisons.find(p => p.prison_id === d.prison_id)?.name || '—',
+    }));
+
+    const enrichedVisits = visits.map(v => ({
+      ...v,
+      inmate_name: inmates.find(i => i.inmate_id === v.inmate_id)?.full_name || '—',
+      doctor_name: doctors.find(d => d.national_id === v.doctor_id)?.name || '—',
+    }));
+
+    setData({ doctors: enrichedDoctors, visits: enrichedVisits });
+    setLoading(false);
   }, []);
 
-  if (loading) return <div style={{padding: '40px', textAlign: 'center'}}>Loading Healthcare Records...</div>;
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Healthcare Records...</div>;
 
   return (
     <div className={styles.container}>
@@ -35,7 +42,7 @@ export const HealthcareOverview = () => {
               <Link to="/healthcare/doctors/add" className={`${styles.btn} ${styles.btnPrimary}`}>
                 <Plus size={16} /> Add Doctor
               </Link>
-              <Link to="/healthcare/visits/add" className={`${styles.btn}`} style={{backgroundColor: 'var(--color-success)', color: 'white'}}>
+              <Link to="/healthcare/visits/add" className={`${styles.btn}`} style={{ backgroundColor: 'var(--color-success)', color: 'white' }}>
                 <Plus size={16} /> Record Medical Visit
               </Link>
             </>
@@ -43,8 +50,8 @@ export const HealthcareOverview = () => {
         </div>
       </div>
 
-      <div style={{background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px', marginBottom: '24px'}}>
-        <h2 style={{fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px', marginBottom: '24px' }}>
+        <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <HeartPulse size={20} color="var(--color-danger)" /> Doctors
         </h2>
         <div className={styles.tableWrapper}>
@@ -60,15 +67,15 @@ export const HealthcareOverview = () => {
                   <td>{doc.prison_name}</td>
                 </tr>
               )) : (
-                <tr><td colSpan="5" style={{textAlign: 'center', padding: '20px', color: 'var(--text-secondary)'}}>No doctors registered.</td></tr>
+                <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No doctors registered.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      <div style={{background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px'}}>
-        <h2 style={{fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px' }}>
+        <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Activity size={20} color="var(--color-primary)" /> Medical Visit Records
         </h2>
         <div className={styles.tableWrapper}>
@@ -82,10 +89,10 @@ export const HealthcareOverview = () => {
                   <td>{v.doctor_name}</td>
                   <td>{v.date_time}</td>
                   <td>{v.diagnosis || '—'}</td>
-                  <td style={{fontSize: '0.8rem', maxWidth: '300px'}}>{v.description || '—'}</td>
+                  <td style={{ fontSize: '0.8rem', maxWidth: '300px' }}>{v.description || '—'}</td>
                 </tr>
               )) : (
-                <tr><td colSpan="6" style={{textAlign: 'center', padding: '20px', color: 'var(--text-secondary)'}}>No medical visits recorded.</td></tr>
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No medical visits recorded.</td></tr>
               )}
             </tbody>
           </table>
