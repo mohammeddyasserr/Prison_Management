@@ -13,21 +13,27 @@ export const IncidentDetail = () => {
     const result = getIncidentDetail(id);
     if (!result) { setLoading(false); return; }
 
+    const allInmates = getInmates();
+    const allOfficers = getOfficers();
     const disciplinary = getDisciplinaryLogs().filter(dl => dl.incident_id === parseInt(id));
-    const inmates = getInmates();
-    const officers = getOfficers();
+    const involved_inmates = disciplinary
+      .map(dl => allInmates.find(i => i.inmate_id === dl.inmate_id))
+      .filter(Boolean);
+    const involved_staff = allOfficers.filter(o => o.national_id === result.incident.reporting_officer);
+    const enrichedDisciplinary = disciplinary.map(dl => ({
+      ...dl,
+      inmate_name: allInmates.find(i => i.inmate_id === dl.inmate_id)?.full_name || '—',
+      imposed_by_name: allOfficers.find(o => o.national_id === dl.imposed_by)?.name || '—',
+    }));
 
-    const involved_inmates = disciplinary.map(dl => inmates.find(i => i.inmate_id === dl.inmate_id)).filter(Boolean);
-    const involved_staff = officers.filter(o => o.national_id === result.incident.reporting_officer);
-
-    setData({ ...result, involved_inmates, involved_staff, disciplinary });
+    setData({ ...result, involved_inmates, involved_staff, disciplinary: enrichedDisciplinary });
     setLoading(false);
   }, [id]);
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Incident Report...</div>;
   if (!data || data.error) return <div style={{ padding: '40px', textAlign: 'center' }}>Incident not found.</div>;
 
-  const { incident, involved_inmates, involved_staff } = data;
+  const { incident, involved_inmates, involved_staff, disciplinary } = data;
 
   return (
     <div className={styles.container}>
@@ -47,10 +53,10 @@ export const IncidentDetail = () => {
             <span className={`${styles.badge} ${styles.badgeDanger}`}>{incident.type}</span>
           </div>
           <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Date/Time:</span><br />{incident.date_time}</div>
-          <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Prison:</span><br />{incident.prison_name || '—'}</div>
-          <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Block:</span><br />{incident.block_name || '—'}</div>
+          <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Prison:</span><br />{incident.prison?.name || '—'}</div>
+          <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Block:</span><br />{incident.block?.name || '—'}</div>
           <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Cell:</span><br />{incident.cell_id ? `#${incident.cell_id}` : '—'}</div>
-          <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Reporting Officer:</span><br />{incident.officer_name || '—'}</div>
+          <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Reporting Officer:</span><br />{incident.officer?.name || '—'}</div>
         </div>
       </div>
 
@@ -78,9 +84,7 @@ export const IncidentDetail = () => {
                     <td>{i.inmate_id}</td>
                     <td>{i.full_name}</td>
                     <td>
-                      <Link to={`/inmates/${i.inmate_id}`} className={`${styles.btn} ${styles.btnOutline}`}>
-                        View
-                      </Link>
+                      <Link to={`/inmates/${i.inmate_id}`} className={`${styles.btn} ${styles.btnOutline}`}>View</Link>
                     </td>
                   </tr>
                 ))}
@@ -91,7 +95,7 @@ export const IncidentDetail = () => {
       )}
 
       {involved_staff.length > 0 && (
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px' }}>
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px', marginBottom: '24px' }}>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Shield size={20} color="var(--color-primary)" /> Staff Involved
           </h2>
@@ -111,34 +115,33 @@ export const IncidentDetail = () => {
           </div>
         </div>
       )}
-    </div>
-  );
-  {
-    data.disciplinary?.length > 0 && (
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px', marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <AlertTriangle size={20} color="var(--color-danger)" /> Related Disciplinary Actions
-        </h2>
-        <div className={styles.tableWrapper}>
-          <table className={styles.table}>
-            <thead><tr><th>Inmate</th><th>Punishment</th><th>Duration</th><th>Date</th><th>Notes</th></tr></thead>
-            <tbody>
-              {data.disciplinary.map((d, i) => {
-                const inmate = getInmates().find(in_ => in_.inmate_id === d.inmate_id);
-                return (
+
+      {disciplinary.length > 0 && (
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px', marginBottom: '24px' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertTriangle size={20} color="var(--color-danger)" /> Related Disciplinary Actions
+          </h2>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
+              <thead>
+                <tr><th>Inmate</th><th>Punishment</th><th>Duration</th><th>Date</th><th>Imposed By</th><th>Notes</th></tr>
+              </thead>
+              <tbody>
+                {disciplinary.map((d, i) => (
                   <tr key={i}>
-                    <td>{inmate?.full_name || '—'}</td>
+                    <td>{d.inmate_name}</td>
                     <td>{d.punishment_type}</td>
                     <td>{d.solitary_confinement_duration ? `${d.solitary_confinement_duration} days` : '—'}</td>
                     <td>{d.date_imposed}</td>
+                    <td>{d.imposed_by_name}</td>
                     <td style={{ fontSize: '0.8rem' }}>{d.notes || '—'}</td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
-    )
-  }
+      )}
+    </div>
+  );
 };
