@@ -1,0 +1,16 @@
+INSERT INTO block (prison_id, security_level) VALUES 
+(1, 'High'),
+(2, 'Medium'),
+(3, 'High'),
+(4, 'High'),
+(5, 'High'),
+(6, 'High'),
+(7, 'High'),
+(8, 'Medium'),
+(9, 'Medium'),
+(10, 'Low'),
+(11, 'Low'),
+(12, 'Medium'),
+(13, 'Low'),
+(14, 'Medium'),
+(15, 'High');
