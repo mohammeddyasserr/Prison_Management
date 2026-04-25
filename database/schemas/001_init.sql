@@ -33,3 +33,9 @@ CREATE TABLE prison (
     -- Manager assigned after OFFICER table is created
     manager_id              VARCHAR(20)             DEFAULT NULL    -- FK added below
 );
+
+CREATE TABLE migrations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    file_name VARCHAR(255) UNIQUE,
+    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
