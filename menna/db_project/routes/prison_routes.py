@@ -41,67 +41,6 @@ async def list_prisons(request: Request):
     })
 
 
-@router.get("/api/detail/{prison_id}")
-async def api_prison_detail(request: Request, prison_id: int):
-    user = get_current_user(request)
-    if not user:
-        return {"error": "Unauthorized"}
-    if user["role"] != "super_admin" and user["prison_id"] != prison_id:
-        return {"error": "Forbidden"}
-
-    db = get_db()
-    prison = db.execute("""
-        SELECT p.*, u.name as manager_name
-        FROM prisons p LEFT JOIN users u ON p.manager_id = u.national_id
-        WHERE p.prison_id = ?
-    """, (prison_id,)).fetchone()
-    
-    if not prison:
-        db.close()
-        return {"error": "Prison not found"}, 404
-
-    features = db.execute("SELECT * FROM prison_features WHERE prison_id = ?", (prison_id,)).fetchone()
-    blocks = db.execute("SELECT * FROM blocks WHERE prison_id = ?", (prison_id,)).fetchall()
-    
-    block_cells = {}
-    from database import rows_to_dicts
-    for b in blocks:
-        cells = db.execute("SELECT * FROM cells WHERE block_id = ?", (b["block_id"],)).fetchall()
-        block_cells[b["block_id"]] = rows_to_dicts(cells)
-        
-    db.close()
-    return {
-        "prison": dict(prison),
-        "features": dict(features) if features else None,
-        "blocks": rows_to_dicts(blocks),
-        "block_cells": block_cells
-    }
-
-
-@router.get("/api/list")
-async def api_list_prisons(request: Request):
-    user = get_current_user(request)
-    if not user:
-        return {"error": "Unauthorized", "prisons": []}
-
-    db = get_db()
-    if user["role"] == "super_admin":
-        prisons = db.execute("""
-            SELECT p.*, u.name as manager_name
-            FROM prisons p LEFT JOIN users u ON p.manager_id = u.national_id
-        """).fetchall()
-    else:
-        prisons = db.execute("""
-            SELECT p.*, u.name as manager_name
-            FROM prisons p LEFT JOIN users u ON p.manager_id = u.national_id
-            WHERE p.prison_id = ?
-        """, (user["prison_id"],)).fetchall()
-    db.close()
-    
-    from database import rows_to_dicts
-    return {"prisons": rows_to_dicts(prisons)}
-
-
 @router.get("/add")
 async def add_prison_form(request: Request):
     user = get_current_user(request)
@@ -113,30 +52,6 @@ async def add_prison_form(request: Request):
     return templates.TemplateResponse("prisons/form.html", {
         "request": request, "user": user, "prison": None, "features": None, "managers": managers
     })
-
-
-@router.get("/api/form-data")
-async def api_prison_form_data(request: Request, prison_id: Optional[int] = None):
-    user = get_current_user(request)
-    if not user or not check_role(user, "super_admin"):
-        return {"error": "Unauthorized", "managers": [], "prison": None, "features": None}
-
-    db = get_db()
-    managers = db.execute("SELECT * FROM users WHERE role = 'prison_manager'").fetchall()
-    
-    prison = None
-    features = None
-    if prison_id:
-        prison = db.execute("SELECT * FROM prisons WHERE prison_id = ?", (prison_id,)).fetchone()
-        features = db.execute("SELECT * FROM prison_features WHERE prison_id = ?", (prison_id,)).fetchone()
-    
-    from database import rows_to_dicts
-    db.close()
-    return {
-        "managers": rows_to_dicts(managers),
-        "prison": dict(prison) if prison else None,
-        "features": dict(features) if features else None
-    }
 
 
 @router.post("/add")

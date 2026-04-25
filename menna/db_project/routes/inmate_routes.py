@@ -75,93 +75,6 @@ async def list_inmates(request: Request):
     })
 
 
-@router.get("/api/list")
-async def api_list_inmates(request: Request):
-    user = get_current_user(request)
-    if not user:
-        return {"error": "Unauthorized", "inmates": []}
-
-    db = get_db()
-    if user["role"] == "super_admin":
-        inmates = db.execute("""
-            SELECT i.*, p.name as prison_name
-            FROM inmates i LEFT JOIN prisons p ON i.assigned_prison = p.prison_id
-            WHERE i.status = 'active'
-            ORDER BY i.full_name
-        """).fetchall()
-    elif user["role"] == "prison_manager":
-        inmates = db.execute("""
-            SELECT i.*, p.name as prison_name
-            FROM inmates i LEFT JOIN prisons p ON i.assigned_prison = p.prison_id
-            WHERE i.assigned_prison = ? AND i.status = 'active'
-            ORDER BY i.full_name
-        """, (user["prison_id"],)).fetchall()
-    else:
-        inmates = db.execute("""
-            SELECT DISTINCT i.*, p.name as prison_name
-            FROM inmates i
-            LEFT JOIN prisons p ON i.assigned_prison = p.prison_id
-            JOIN shift_assignments sa ON i.assigned_block = sa.block_id
-            WHERE sa.officer_id = ? AND i.status = 'active'
-            ORDER BY i.full_name
-        """, (user["national_id"],)).fetchall()
-    db.close()
-    
-    from database import rows_to_dicts
-    return {"inmates": rows_to_dicts(inmates)}
-
-
-@router.get("/api/detail/{inmate_id}")
-async def api_inmate_detail(request: Request, inmate_id: int):
-    user = get_current_user(request)
-    if not user:
-        return {"error": "Unauthorized"}
-
-    db = get_db()
-    inmate = db.execute("""
-        SELECT i.*, p.name as prison_name, b.name as block_name
-        FROM inmates i
-        LEFT JOIN prisons p ON i.assigned_prison = p.prison_id
-        LEFT JOIN blocks b ON i.assigned_block = b.block_id
-        WHERE i.inmate_id = ?
-    """, (inmate_id,)).fetchone()
-    
-    if not inmate:
-        db.close()
-        return {"error": "Inmate not found"}, 404
-
-    legal_case = db.execute("SELECT * FROM legal_cases WHERE inmate_id = ?", (inmate_id,)).fetchone()
-    
-    incidents = db.execute("""
-        SELECT inc.* FROM incidents inc
-        JOIN incident_inmates ii ON inc.incident_id = ii.incident_id
-        WHERE ii.inmate_id = ?
-        ORDER BY inc.date_time DESC
-    """, (inmate_id,)).fetchall()
-    
-    disciplinary = db.execute("""
-        SELECT * FROM disciplinary_logs WHERE inmate_id = ?
-        ORDER BY date_imposed DESC
-    """, (inmate_id,)).fetchall()
-    
-    medical = db.execute("""
-        SELECT mv.*, d.name as doctor_name FROM medical_visits mv
-        JOIN doctors d ON mv.doctor_id = d.national_id
-        WHERE mv.inmate_id = ?
-        ORDER BY mv.date_time DESC
-    """, (inmate_id,)).fetchall()
-    
-    from database import rows_to_dicts
-    db.close()
-    return {
-        "inmate": dict(inmate),
-        "legal_case": dict(legal_case) if legal_case else None,
-        "incidents": rows_to_dicts(incidents),
-        "disciplinary": rows_to_dicts(disciplinary),
-        "medical": rows_to_dicts(medical)
-    }
-
-
 @router.get("/add")
 async def add_inmate_form(request: Request):
     user = get_current_user(request)
@@ -175,19 +88,6 @@ async def add_inmate_form(request: Request):
         "request": request, "user": user, "inmate": None, "prisons": prisons,
         "legal_case": None, "blocks": [], "cells": []
     })
-
-
-@router.get("/api/form-data")
-async def api_inmate_form_data(request: Request):
-    user = get_current_user(request)
-    if not user or not check_role(user, "super_admin"):
-        return {"error": "Unauthorized", "prisons": []}
-
-    db = get_db()
-    prisons = db.execute("SELECT * FROM prisons").fetchall()
-    from database import rows_to_dicts
-    db.close()
-    return {"prisons": rows_to_dicts(prisons)}
 
 
 @router.post("/add")
@@ -308,36 +208,6 @@ async def assign_inmate_form(request: Request, inmate_id: int):
         "request": request, "user": user, "inmate": inmate,
         "blocks": blocks, "block_cells": block_cells
     })
-
-
-@router.get("/api/assign-data/{inmate_id}")
-async def api_inmate_assign_data(request: Request, inmate_id: int):
-    user = get_current_user(request)
-    if not user or not check_role(user, "prison_manager"):
-        return {"error": "Unauthorized"}
-
-    db = get_db()
-    inmate = db.execute("SELECT * FROM inmates WHERE inmate_id = ?", (inmate_id,)).fetchone()
-    if not inmate:
-        db.close()
-        return {"error": "Inmate not found"}, 404
-        
-    blocks = db.execute("SELECT * FROM blocks WHERE prison_id = ?", (user["prison_id"],)).fetchall()
-
-    block_cells = {}
-    from database import rows_to_dicts
-    for block in blocks:
-        cells = db.execute("""
-            SELECT * FROM cells WHERE block_id = ? AND current_occupancy < capacity
-        """, (block["block_id"],)).fetchall()
-        block_cells[block["block_id"]] = rows_to_dicts(cells)
-
-    db.close()
-    return {
-        "inmate": dict(inmate),
-        "blocks": rows_to_dicts(blocks),
-        "block_cells": block_cells
-    }
 
 
 @router.post("/{inmate_id}/assign")

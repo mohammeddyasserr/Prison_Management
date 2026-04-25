@@ -48,40 +48,6 @@ async def list_visits(request: Request):
     })
 
 
-@router.get("/api/list")
-async def api_list_visits(request: Request):
-    user = get_current_user(request)
-    if not user:
-        return {"error": "Unauthorized", "visits": []}
-
-    db = get_db()
-    if user["role"] == "super_admin":
-        visits = db.execute("""
-            SELECT v.*, vis.full_name as visitor_name, vis.relationship,
-                   i.full_name as inmate_name, p.name as prison_name
-            FROM visits v
-            LEFT JOIN visitors vis ON v.visit_id = vis.visit_id
-            LEFT JOIN inmates i ON v.inmate_national_id = i.national_id
-            LEFT JOIN prisons p ON v.prison_id = p.prison_id
-            ORDER BY v.visit_date DESC
-        """).fetchall()
-    else:
-        visits = db.execute("""
-            SELECT v.*, vis.full_name as visitor_name, vis.relationship,
-                   i.full_name as inmate_name, p.name as prison_name
-            FROM visits v
-            LEFT JOIN visitors vis ON v.visit_id = vis.visit_id
-            LEFT JOIN inmates i ON v.inmate_national_id = i.national_id
-            LEFT JOIN prisons p ON v.prison_id = p.prison_id
-            WHERE v.prison_id = ?
-            ORDER BY v.visit_date DESC
-        """, (user["prison_id"],)).fetchall()
-    db.close()
-    
-    from database import rows_to_dicts
-    return {"visits": rows_to_dicts(visits)}
-
-
 @router.post("/{visit_id}/approve")
 async def approve_visit(request: Request, visit_id: int):
     """PRD 3.2: Prison Manager approves visit."""
@@ -129,21 +95,6 @@ async def manage_slots(request: Request):
     return templates.TemplateResponse("visits/slots.html", {
         "request": request, "user": user, "slots": slots
     })
-
-
-@router.get("/api/slots")
-async def api_visit_slots(request: Request):
-    user = get_current_user(request)
-    if not user or not check_role(user, "prison_manager"):
-        return {"error": "Unauthorized", "slots": []}
-
-    db = get_db()
-    slots = db.execute("""
-        SELECT * FROM visit_time_slots WHERE prison_id = ?
-    """, (user["prison_id"],)).fetchall()
-    from database import rows_to_dicts
-    db.close()
-    return {"slots": rows_to_dicts(slots)}
 
 
 @router.post("/slots/add")
