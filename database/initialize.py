@@ -44,12 +44,12 @@ def main():
                 try:
                     run_sql_file(cursor, file_path)
                     conn.commit()
-                    print(f"Successfully ran {file} ✅")
+                    print(f"Successfully ran {file} [OK]")
                 except Exception as e:
                     conn.rollback()
                     print(f"Error in {file}: {e}")
                     return
-        print("All schemas executed successfully! ✅")
+        print("All schemas executed successfully! [OK]")
     else:
         print(f"Schemas directory not found at {SCHEMAS_DIR}")
 
@@ -76,16 +76,16 @@ def main():
                     run_sql_file(cursor, file_path)
                     mark_seed_executed(cursor, file)
                     conn.commit()
-                    print(f"Successfully ran {file} ✅")
+                    print(f"Successfully ran {file} [OK]")
                 except Exception as e:
                     conn.rollback()
                     print(f"Error in {file}: {e}")
                     return
-        print("All seeds executed successfully! ✅")
+        print("All seeds executed successfully! [OK]")
     else:
         print(f"Seeds directory not found at {SEEDS_DIR}")
 
-    print("\nAll initialization tasks completed! ✅")
+    print("\nAll initialization tasks completed! [OK]")
     cursor.close()
     conn.close()
 
