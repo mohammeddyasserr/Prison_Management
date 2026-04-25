@@ -9,10 +9,10 @@ export const DisciplinaryList = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const logs = getDisciplinaryLogs();
+    const rawLogs = getDisciplinaryLogs();  // ← renamed from logs to rawLogs
     const inmates = getInmates();
     const officers = getOfficers();
-    const enriched = logs.map(log => ({
+    const enriched = rawLogs.map(log => ({
       ...log,
       inmate_name: inmates.find(i => i.inmate_id === log.inmate_id)?.full_name || '—',
       imposed_by_name: officers.find(o => o.national_id === log.imposed_by)?.name || '—',
