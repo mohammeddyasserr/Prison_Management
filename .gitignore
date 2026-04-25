@@ -96,3 +96,10 @@ out/
 
 # Vite specific (if using Vite for React)
 !/.env.example
+
+# -----------------
+# Databases
+# -----------------
+*.db
+*.sqlite
+*.sqlite3
