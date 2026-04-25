@@ -3,27 +3,24 @@ import { Plus, Eye, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
 import { hasRole } from '../../lib/auth';
+import { getInmates, getPrisons } from '../../data/mockData';
 
 export const InmatesList = () => {
   const [inmates, setInmates] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/inmates/api/list');
-        const result = await response.json();
-        setInmates(result.inmates || []);
-      } catch (error) {
-        console.error("Failed to fetch inmates:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    const inmates = getInmates();
+    const prisons = getPrisons();
+    const enriched = inmates.map(i => ({
+      ...i,
+      prison_name: prisons.find(p => p.prison_id === i.assigned_prison)?.name || null
+    }));
+    setInmates(enriched);
+    setLoading(false);
   }, []);
 
-  if (loading) return <div style={{padding: '40px', textAlign: 'center'}}>Loading Inmate Records...</div>;
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Inmate Records...</div>;
 
   return (
     <div className={styles.container}>
@@ -65,14 +62,14 @@ export const InmatesList = () => {
                     <Eye size={14} /> View
                   </Link>
                   {hasRole('prison_manager') && !inmate.assigned_cell && (
-                    <Link to={`/inmates/${inmate.inmate_id}/assign`} className={`${styles.btn}`} style={{backgroundColor: 'var(--color-warning)', color: 'white'}}>
+                    <Link to={`/inmates/${inmate.inmate_id}/assign`} className={`${styles.btn}`} style={{ backgroundColor: 'var(--color-warning)', color: 'white' }}>
                       <UserPlus size={14} /> Assign Cell
                     </Link>
                   )}
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan="8" style={{textAlign: 'center', padding: '20px', color: 'var(--text-secondary)'}}>No inmates found.</td></tr>
+              <tr><td colSpan="8" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No inmates found.</td></tr>
             )}
           </tbody>
         </table>
