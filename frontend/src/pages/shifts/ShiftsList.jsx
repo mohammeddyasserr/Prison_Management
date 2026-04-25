@@ -3,6 +3,7 @@ import { Trash2, Calendar } from 'lucide-react';
 import styles from '../EntityStyles.module.css';
 import { hasRole } from '../../lib/auth';
 import { postForm } from '../../lib/http';
+import { getShifts, getOfficers, getBlocks, getPrisons } from '../../data/mockData';
 
 export const ShiftsList = () => {
   const [data, setData] = useState({ shifts: [], officers: [], blocks: [] });
@@ -15,21 +16,30 @@ export const ShiftsList = () => {
   });
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/shifts/api/list');
-        const result = await response.json();
-        setData(result);
-      } catch (error) {
-        console.error("Failed to fetch shifts:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+    const shifts = getShifts();
+    const officers = getOfficers();
+    const blocks = getBlocks();
+    const prisons = getPrisons();
 
-  if (loading) return <div style={{padding: '40px', textAlign: 'center'}}>Loading Shift Schedule...</div>;
+    const enrichedShifts = shifts.map(s => {
+      const block = blocks.find(b => b.block_id === s.block_id);
+      const prison = block ? prisons.find(p => p.prison_id === block.prison_id) : null;
+      return {
+        ...s,
+        officer_name: officers.find(o => o.national_id === s.officer_id)?.name || '—',
+        block_name: block?.name || '—',
+        prison_name: prison?.name || '—',
+      };
+    });
+
+    setData({
+      shifts: enrichedShifts,
+      officers: officers,
+      blocks: blocks,
+    });
+    setLoading(false);
+  }, []);
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Shift Schedule...</div>;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -55,44 +65,44 @@ export const ShiftsList = () => {
       <h1 className={styles.title}>Shift Management</h1>
 
       {hasRole('prison_manager') && (
-        <div style={{background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px', marginBottom: '24px', maxWidth: '800px'}}>
-          <h2 style={{fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px'}}>Assign Shift</h2>
-          <form onSubmit={handleSubmit} style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px'}}>
-          <div>
-            <label style={{display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px'}}>Officer *</label>
-            <select name="officer_id" value={formData.officer_id} onChange={handleChange} style={{width: '100%', padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)'}} required>
-              <option value="">— Select —</option>
-              {data.officers.map(o => <option key={o.national_id} value={o.national_id}>{o.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px'}}>Block *</label>
-            <select name="block_id" value={formData.block_id} onChange={handleChange} style={{width: '100%', padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)'}} required>
-              <option value="">— Select —</option>
-              {data.blocks.map(b => <option key={b.block_id} value={b.block_id}>{b.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px'}}>Shift Type *</label>
-            <select name="shift_type" value={formData.shift_type} onChange={handleChange} style={{width: '100%', padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)'}} required>
-              <option value="Morning">Morning (06:00–14:00)</option>
-              <option value="Afternoon">Afternoon (14:00–22:00)</option>
-              <option value="Night">Night (22:00–06:00)</option>
-            </select>
-          </div>
-          <div>
-            <label style={{display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px'}}>Date *</label>
-            <input type="date" name="date" value={formData.date} onChange={handleChange} style={{width: '100%', padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)'}} required />
-          </div>
-          <div style={{gridColumn: 'span 2'}}>
-            <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} style={{width: '100%', justifyContent: 'center'}}>Assign Shift</button>
-          </div>
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px', marginBottom: '24px', maxWidth: '800px' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px' }}>Assign Shift</h2>
+          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Officer *</label>
+              <select name="officer_id" value={formData.officer_id} onChange={handleChange} style={{ width: '100%', padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }} required>
+                <option value="">— Select —</option>
+                {data.officers.map(o => <option key={o.national_id} value={o.national_id}>{o.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Block *</label>
+              <select name="block_id" value={formData.block_id} onChange={handleChange} style={{ width: '100%', padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }} required>
+                <option value="">— Select —</option>
+                {data.blocks.map(b => <option key={b.block_id} value={b.block_id}>{b.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Shift Type *</label>
+              <select name="shift_type" value={formData.shift_type} onChange={handleChange} style={{ width: '100%', padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }} required>
+                <option value="Morning">Morning (06:00–14:00)</option>
+                <option value="Afternoon">Afternoon (14:00–22:00)</option>
+                <option value="Night">Night (22:00–06:00)</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Date *</label>
+              <input type="date" name="date" value={formData.date} onChange={handleChange} style={{ width: '100%', padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }} required />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} style={{ width: '100%', justifyContent: 'center' }}>Assign Shift</button>
+            </div>
           </form>
         </div>
       )}
 
-      <div style={{background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px'}}>
-        <h2 style={{fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px' }}>
+        <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Calendar size={20} color="var(--color-primary)" /> Shift Schedule
         </h2>
         <div className={styles.tableWrapper}>
@@ -121,14 +131,14 @@ export const ShiftsList = () => {
                   <td>{s.start_time} — {s.end_time}</td>
                   {hasRole('prison_manager') && (
                     <td className={styles.actions}>
-                      <button className={`${styles.btn} ${styles.badgeDanger}`} style={{border: 'none', cursor: 'pointer'}} onClick={() => removeShift(s.shift_id)}>
+                      <button className={`${styles.btn} ${styles.badgeDanger}`} style={{ border: 'none', cursor: 'pointer' }} onClick={() => removeShift(s.shift_id)}>
                         <Trash2 size={14} /> Remove
                       </button>
                     </td>
                   )}
                 </tr>
               )) : (
-                <tr><td colSpan={hasRole('prison_manager') ? '7' : hasRole('super_admin') ? '7' : '5'} style={{textAlign: 'center', padding: '20px', color: 'var(--text-secondary)'}}>No shifts found.</td></tr>
+                <tr><td colSpan={hasRole('prison_manager') ? '7' : hasRole('super_admin') ? '7' : '5'} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No shifts found.</td></tr>
               )}
             </tbody>
           </table>
