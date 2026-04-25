@@ -21,7 +21,6 @@ import { VisitsList } from './pages/visits/VisitsList';
 import { VisitSlots } from './pages/visits/VisitSlots';
 import { IncidentsList } from './pages/incidents/IncidentsList';
 import { IncidentDetail } from './pages/incidents/IncidentDetail';
-import { IncidentForm } from './pages/incidents/IncidentForm';
 import { DisciplinaryList } from './pages/disciplinary/DisciplinaryList';
 import { DisciplinaryForm } from './pages/disciplinary/DisciplinaryForm';
 import { HealthcareOverview } from './pages/healthcare/HealthcareOverview';
@@ -65,7 +64,6 @@ function App() {
           <Route path="visits" element={<VisitsList />} />
           <Route path="visits/slots" element={<VisitSlots />} />
           <Route path="incidents" element={<IncidentsList />} />
-          <Route path="incidents/add" element={<IncidentForm />} />
           <Route path="incidents/:id" element={<IncidentDetail />} />
           <Route path="disciplinary" element={<DisciplinaryList />} />
           <Route path="disciplinary/add" element={<DisciplinaryForm />} />
