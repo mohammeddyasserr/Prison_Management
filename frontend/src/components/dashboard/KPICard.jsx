@@ -4,12 +4,12 @@ import styles from './KPICard.module.css';
 
 const trendPalette = {
   up: {
-    color: 'var(--color-success)',
-    background: 'rgba(34, 197, 94, 0.14)',
-  },
-  down: {
     color: 'var(--color-danger)',
     background: 'rgba(239, 68, 68, 0.14)',
+  },
+  down: {
+    color: 'var(--color-success)',
+    background: 'rgba(34, 197, 94, 0.14)',
   },
   normal: {
     color: 'var(--color-primary)',
