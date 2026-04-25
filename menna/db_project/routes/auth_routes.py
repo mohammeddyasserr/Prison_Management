@@ -115,3 +115,10 @@ async def login(request: Request):
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login", status_code=302)
+
+
+@router.post("/logout")
+async def logout_post(request: Request):
+    """Handle POST logout requests from React frontend."""
+    request.session.clear()
+    return JSONResponse(content={"success": True})

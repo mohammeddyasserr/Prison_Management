@@ -2,39 +2,73 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './Login.module.css';
 
+// ── Hardcoded Users (no backend/database required) ──
+const HARDCODED_USERS = {
+  // Super Admin
+  'ADMIN001': {
+    password: 'admin123',
+    name: 'System Administrator',
+    role: 'super_admin'
+  },
+  // Prison Managers
+  'MGR001': {
+    password: 'manager123',
+    name: 'Ahmed Hassan',
+    role: 'prison_manager'
+  },
+  'MGR002': {
+    password: 'manager123',
+    name: 'Fatima Ali',
+    role: 'prison_manager'
+  },
+  // Officers
+  'OFF001': {
+    password: 'officer123',
+    name: 'Mohamed Youssef',
+    role: 'officer'
+  },
+  'OFF002': {
+    password: 'officer123',
+    name: 'Sara Ibrahim',
+    role: 'officer'
+  },
+  'OFF003': {
+    password: 'officer123',
+    name: 'Omar Khaled',
+    role: 'officer'
+  },
+};
+
 export const Login = () => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
   const [error, setError] = useState('');
 
-  const handleLogin = async (e) => {
+  const handleLogin = (e) => {
     e.preventDefault();
     setError('');
 
-    try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          identifier: identifier.trim(),
-          password,
-        }),
-      });
-      const result = await response.json();
+    const userId = identifier.trim().toUpperCase();
+    const user = HARDCODED_USERS[userId];
 
-      if (result.success) {
-        localStorage.setItem('userRole', result.role);
-        localStorage.setItem('userName', result.name);
-        localStorage.setItem('userNationalId', result.national_id);
-        if (result.role === 'super_admin') navigate('/dashboard/superadmin');
-        else if (result.role === 'prison_manager') navigate('/dashboard/manager');
-        else navigate('/dashboard/officer');
-      } else {
-        setError(result.error || 'Login failed');
-      }
-    } catch {
-      setError('Connection error. Please try again.');
+    if (!user || user.password !== password) {
+      setError('Invalid credentials. Please try again.');
+      return;
+    }
+
+    // Store user info in localStorage
+    localStorage.setItem('userRole', user.role);
+    localStorage.setItem('userName', user.name);
+    localStorage.setItem('userNationalId', userId);
+
+    // Navigate based on role
+    if (user.role === 'super_admin') {
+      navigate('/dashboard/superadmin');
+    } else if (user.role === 'prison_manager') {
+      navigate('/dashboard/manager');
+    } else {
+      navigate('/dashboard/officer');
     }
   };
 
@@ -49,26 +83,26 @@ export const Login = () => {
         <form onSubmit={handleLogin} className={styles.form}>
           <div className={styles.formGroup}>
             <label htmlFor="national_id">Username / Email / National ID</label>
-            <input 
+            <input
               id="national_id"
-              type="text" 
+              type="text"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               placeholder="Enter username, email, or National ID"
-              required 
+              required
               autoFocus
             />
           </div>
 
           <div className={styles.formGroup}>
             <label htmlFor="password">Password</label>
-            <input 
+            <input
               id="password"
-              type="password" 
-              value={password} 
+              type="password"
+              value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
-              required 
+              required
             />
           </div>
 
