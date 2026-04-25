@@ -1,0 +1,23 @@
+.layoutContainer {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebarWrapper {
+  width: 260px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 100;
+}
+
+.mainContent {
+  flex: 1;
+  margin-left: 260px;
+  min-height: 100vh;
+}
+
+.pageContent {
+  padding: 24px 32px;
+}
