@@ -6,7 +6,7 @@ CREATE TABLE prison (
     security_level          VARCHAR(50)         NOT NULL
                             CHECK (security_level IN ('High','Medium','Low')),
     location                VARCHAR(100)    NOT NULL,          -- City / Governorate
-    manager_id              INTEGER         REFERENCES officer(national_id) ON DELETE SET NULL,
+    manager_id              VARCHAR(14)         REFERENCES officer(national_id) ON DELETE SET NULL,
     -- Facility feature flags
     has_hospital            BOOLEAN         NOT NULL DEFAULT 0,
     has_workshops           BOOLEAN         NOT NULL DEFAULT 0,
