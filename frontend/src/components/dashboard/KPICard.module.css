@@ -3,13 +3,10 @@
   border: 1px solid var(--border-color);
   border-radius: 10px;
   padding: 24px 20px;
-  text-align: center;
   transition: background-color 0.2s, transform 0.2s;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  gap: 14px;
 }
 
 .card:hover {
@@ -23,25 +20,59 @@
   letter-spacing: 1px;
   color: var(--text-secondary);
   font-weight: 600;
+  margin: 0;
 }
 
 .value {
   font-size: 2.25rem;
   font-weight: 700;
   color: var(--text-primary);
-  margin: 4px 0;
+  margin: 0;
   line-height: 1;
+  text-align: left;
 }
 
 .iconWrapper {
-  margin-bottom: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0.8;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 10%, transparent);
 }
 
-/* For trend indicators if needed in the future, hidden for now to match reference exactly */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.titleWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
 .trendInline {
-  display: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--trend-bg);
+  color: var(--trend-color);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.trendInline svg {
+  flex-shrink: 0;
 }

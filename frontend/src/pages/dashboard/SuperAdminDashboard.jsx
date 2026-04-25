@@ -31,12 +31,47 @@ export const SuperAdminDashboard = () => {
 
   const totalPrisons = data.prisons?.length || 0;
   const totalInmates = data.prisons?.reduce((sum, p) => sum + p.current_occupancy, 0) || 0;
+  const totalCapacity = data.prisons?.reduce((sum, p) => sum + p.total_capacity, 0) || 0;
+  const alertsCount = data.alerts?.length ?? 0;
+  const pendingTransfers = data.transfer_stats?.pending ?? 0;
+  const approvedTransfers = data.transfer_stats?.approved ?? 0;
+  const activePrisons = data.prisons?.filter((prison) => prison.current_occupancy > 0).length || 0;
+  const occupancyRate = totalCapacity > 0 ? Math.round((totalInmates / totalCapacity) * 100) : 0;
+  const alertShare = totalPrisons > 0 ? Math.round((alertsCount / totalPrisons) * 100) : 0;
 
   const kpiData = [
-    { title: 'Total Prisons',     value: totalPrisons.toString(),              icon: Building,      color: 'var(--text-secondary)' },
-    { title: 'Total Inmates',     value: totalInmates.toLocaleString(),        icon: Users,         color: 'var(--text-secondary)' },
-    { title: 'Pending Transfers', value: (data.transfer_stats?.pending ?? 0).toString(), icon: Clock, color: 'var(--color-warning)' },
-    { title: 'System Alerts',     value: (data.alerts?.length ?? 0).toString(), icon: AlertTriangle, color: 'var(--color-danger)' },
+    {
+      title: 'Total Prisons',
+      value: totalPrisons.toString(),
+      icon: Building,
+      color: 'var(--color-primary)',
+      trend: 'normal',
+      trendValue: `${activePrisons} active`,
+    },
+    {
+      title: 'Total Inmates',
+      value: totalInmates.toLocaleString(),
+      icon: Users,
+      color: 'var(--color-success)',
+      trend: totalInmates > 0 ? 'up' : 'normal',
+      trendValue: `${occupancyRate}% capacity`,
+    },
+    {
+      title: 'Pending Transfers',
+      value: pendingTransfers.toString(),
+      icon: Clock,
+      color: 'var(--color-warning)',
+      trend: pendingTransfers > 0 ? 'down' : 'normal',
+      trendValue: `${approvedTransfers} approved`,
+    },
+    {
+      title: 'System Alerts',
+      value: alertsCount.toString(),
+      icon: AlertTriangle,
+      color: 'var(--color-danger)',
+      trend: alertsCount > 0 ? 'down' : 'normal',
+      trendValue: `${alertShare}% flagged`,
+    },
   ];
 
   const getRateClass = (rate) => {

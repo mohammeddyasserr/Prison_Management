@@ -2,31 +2,56 @@ import React from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import styles from './KPICard.module.css';
 
+const trendPalette = {
+  up: {
+    color: 'var(--color-success)',
+    background: 'rgba(34, 197, 94, 0.14)',
+  },
+  down: {
+    color: 'var(--color-danger)',
+    background: 'rgba(239, 68, 68, 0.14)',
+  },
+  normal: {
+    color: 'var(--color-primary)',
+    background: 'rgba(59, 130, 246, 0.14)',
+  },
+};
+
 export const KPICard = ({ title, value, icon: Icon, color, trend, trendValue }) => {
   const CardIcon = Icon || Minus;
+  const hasTrend = (trend === 'up' || trend === 'down' || trend === 'normal') && trendValue !== undefined && trendValue !== null;
+  const palette = trendPalette[trend] || trendPalette.normal;
 
   const renderTrendIcon = () => {
     switch (trend) {
       case 'up':
-        return <TrendingUp size={14} color="var(--color-danger)" />;
+        return <TrendingUp size={14} />;
       case 'down':
-        return <TrendingDown size={14} color="var(--color-success)" />;
+        return <TrendingDown size={14} />;
+      case 'normal':
+        return <Minus size={14} />;
       default:
-        return <Minus size={14} color="var(--text-secondary)" />;
+        return null;
     }
   };
-
-  const trendColor = trend === 'up' ? 'var(--color-danger)' : trend === 'down' ? 'var(--color-success)' : 'var(--text-secondary)';
 
   return (
     <div className={styles.card} data-light-target="true">
       <div className={styles.header}>
         <div className={styles.titleWrapper}>
           <h3 className={styles.title}>{title}</h3>
-          <div className={styles.trendInline} style={{ color: trendColor }}>
-            {renderTrendIcon()}
-            <span>{trendValue}</span>
-          </div>
+          {hasTrend && (
+            <div
+              className={styles.trendInline}
+              style={{
+                '--trend-color': palette.color,
+                '--trend-bg': palette.background,
+              }}
+            >
+              {renderTrendIcon()}
+              <span>{trendValue}</span>
+            </div>
+          )}
         </div>
         <div className={styles.iconWrapper} style={{ color }}>
           <CardIcon size={24} />
