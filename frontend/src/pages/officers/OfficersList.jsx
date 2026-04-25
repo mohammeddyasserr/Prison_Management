@@ -3,27 +3,24 @@ import { Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
 import { hasRole } from '../../lib/auth';
+import { getOfficers, getPrisons } from '../../data/mockData';
 
 export const OfficersList = () => {
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/officers/api/list');
-        const result = await response.json();
-        setOfficers(result.officers || []);
-      } catch (error) {
-        console.error("Failed to fetch staff:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    const officers = getOfficers();
+    const prisons = getPrisons();
+    const enriched = officers.map(o => ({
+      ...o,
+      prison_name: prisons.find(p => p.prison_id === o.prison_id)?.name || null
+    }));
+    setOfficers(enriched);
+    setLoading(false);
   }, []);
 
-  if (loading) return <div style={{padding: '40px', textAlign: 'center'}}>Loading Staff Records...</div>;
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Staff Records...</div>;
 
   return (
     <div className={styles.container}>
@@ -63,7 +60,7 @@ export const OfficersList = () => {
                 <td>{o.prison_name || 'Unassigned'}</td>
               </tr>
             )) : (
-              <tr><td colSpan="6" style={{textAlign: 'center', padding: '20px', color: 'var(--text-secondary)'}}>No staff found.</td></tr>
+              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No staff found.</td></tr>
             )}
           </tbody>
         </table>
