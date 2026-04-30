@@ -26,6 +26,39 @@ def get_cell_by_id(cell_id: int, db: SessionDep):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Cell with id {cell_id} not found")
     return cell
 
+@router.get("/block/{block_id}", status_code=status.HTTP_200_OK, response_model=list[schemas.CellResponse])
+def get_cells_by_block(block_id: int, db: SessionDep):
+    cells = db.execute(text("""
+        SELECT 
+            c.*,
+            c.capacity AS total_capacity,
+            (
+                SELECT COUNT(*)
+                FROM inmate i
+                WHERE i.assigned_cell = c.cell_id
+            ) AS current_occupancy
+        FROM cell c
+        WHERE c.block_id = :id
+    """), {"id": block_id}).fetchall()
+    return cells
+
+@router.get("/prison/{prison_id}", status_code=status.HTTP_200_OK, response_model=list[schemas.CellResponse])
+def get_cells_by_prison(prison_id: int, db: SessionDep):
+    cells = db.execute(text("""
+        SELECT 
+            c.*,
+            c.capacity AS total_capacity,
+            (
+                SELECT COUNT(*)
+                FROM inmate i
+                WHERE i.assigned_cell = c.cell_id
+            ) AS current_occupancy
+        FROM cell c
+        JOIN block b ON c.block_id = b.block_id
+        WHERE b.prison_id = :id
+    """), {"id": prison_id}).fetchall()
+    return cells
+
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=schemas.CellResponse)
 def create_cell(request: schemas.CellCreate, db: SessionDep):
     # Check if the block exists

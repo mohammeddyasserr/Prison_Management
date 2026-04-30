@@ -36,6 +36,32 @@ def get_block_by_id(block_id: int, db: SessionDep):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Block with id {block_id} not found")
     return block
 
+@router.get("/prison/{prison_id}", status_code=status.HTTP_200_OK, response_model=list[schemas.BlockResponse])
+def get_blocks_by_prison(prison_id: int, db: SessionDep):
+    blocks = db.execute(text("""
+        SELECT 
+            b.*,
+            (
+                SELECT COALESCE(SUM(c.capacity), 0)
+                FROM cell c
+                WHERE c.block_id = b.block_id
+            ) AS total_capacity,
+            (
+                SELECT COUNT(*)
+                FROM cell c
+                WHERE c.block_id = b.block_id
+            ) AS number_of_cells,
+            (
+                SELECT COUNT(*)
+                FROM inmate i
+                JOIN cell c ON i.assigned_cell = c.cell_id
+                WHERE c.block_id = b.block_id
+            ) AS current_occupancy
+        FROM block b
+        WHERE b.prison_id = :id
+    """), {"id": prison_id}).fetchall()
+    return blocks
+
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=schemas.BlockResponse)
 def create_block(request: schemas.BlockCreate, db: SessionDep):
     # Check if the prison exists
