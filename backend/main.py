@@ -1,7 +1,7 @@
 from fastapi import FastAPI
-from .database import create_db_and_tables
+from database import create_db_and_tables
+from routers import prison
 
-from .routers import blog, user, authentication
 
 app = FastAPI()
 
@@ -9,6 +9,6 @@ app = FastAPI()
 def on_startup():
     create_db_and_tables()
 
-# app.include_router(blog.router)
+app.include_router(prison.router)
 
 
