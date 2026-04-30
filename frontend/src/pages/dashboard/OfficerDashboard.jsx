@@ -3,24 +3,16 @@ import { Shield, AlertTriangle, UserMinus, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { KPICard } from '../../components/dashboard/KPICard';
 import styles from './DashboardStyles.module.css';
+import { getDashboardData } from '../../data/mockData';
 
 export const OfficerDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/dashboard/officer');
-        const result = await response.json();
-        setData(result);
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    const result = getDashboardData('officer');
+    setData(result);
+    setLoading(false);
   }, []);
 
   if (loading) return <div className={styles.loading}>Connecting to secure network...</div>;
@@ -73,9 +65,7 @@ export const OfficerDashboard = () => {
               </tbody>
             </table>
           </div>
-        ) : (
-          <p className={styles.emptyState}>No cells assigned to your blocks.</p>
-        )}
+        ) : <p className={styles.emptyState}>No cells assigned to your blocks.</p>}
       </div>
 
       <div className={styles.panelsRow}>
@@ -100,9 +90,7 @@ export const OfficerDashboard = () => {
                 </tbody>
               </table>
             </div>
-          ) : (
-            <p className={styles.emptyState}>No recent incidents.</p>
-          )}
+          ) : <p className={styles.emptyState}>No recent incidents.</p>}
         </div>
 
         <div className={styles.panel}>
@@ -121,9 +109,7 @@ export const OfficerDashboard = () => {
                 </tbody>
               </table>
             </div>
-          ) : (
-            <p className={styles.emptyState}>No active solitary confinement orders.</p>
-          )}
+          ) : <p className={styles.emptyState}>No active solitary confinement orders.</p>}
         </div>
       </div>
 
@@ -145,9 +131,7 @@ export const OfficerDashboard = () => {
               </tbody>
             </table>
           </div>
-        ) : (
-          <p className={styles.emptyState}>No upcoming shifts assigned.</p>
-        )}
+        ) : <p className={styles.emptyState}>No upcoming shifts assigned.</p>}
       </div>
     </div>
   );
