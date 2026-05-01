@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
+aiofiles
+itsdangerous
+mysql-connector-python
+pydantic
+python-dotenv
+sqlmodel

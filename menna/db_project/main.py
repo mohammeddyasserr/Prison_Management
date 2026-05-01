@@ -9,10 +9,28 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 import os
 
-from database import init_db
+from database import init_db, get_db
 
 # Initialize the database tables on startup
 init_db()
+
+# Auto-seed the database if no users exist
+def auto_seed_if_empty():
+    """Check if the database is empty and seed it with demo data."""
+    try:
+        db = get_db()
+        user_count = db.execute("SELECT COUNT(*) as count FROM users").fetchone()["count"]
+        db.close()
+        if user_count == 0:
+            print("No users found in database. Seeding with demo data...")
+            from seed import seed_data
+            seed_data()
+            print("Demo data seeded successfully!")
+    except Exception as e:
+        print(f"Warning: Could not auto-seed database: {e}")
+
+# Run auto-seed on startup
+auto_seed_if_empty()
 
 app = FastAPI(title="CPMS — Centralized Prison Management System")
 
