@@ -16,7 +16,6 @@ def list_prisons(db: SessionDep):
             p.*, 
             o.name AS manager_name,
             (
-                # coalesce return 0 if null
                 SELECT COALESCE(SUM(c.capacity), 0)
                 FROM cell c
                 JOIN block b ON c.block_id = b.block_id
