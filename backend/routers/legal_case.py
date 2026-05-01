@@ -33,3 +33,13 @@ def create_legal_case(request: schemas.LegalCaseCreate, db: SessionDep):
     new_case = result.fetchone()
     db.commit()
     return new_case
+
+@router.get("/inmate/{inmate_id}", response_model=list[schemas.LegalCaseResponse], status_code=status.HTTP_200_OK)
+def get_cases_by_inmate(inmate_id: int, db: SessionDep):
+    cases = db.execute(text("""
+        SELECT *
+        FROM legal_case 
+        WHERE inmate_id = :inmate_id
+    """), {"inmate_id": inmate_id}).fetchall()
+    
+    return cases

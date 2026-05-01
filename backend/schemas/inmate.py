@@ -23,3 +23,5 @@ class InmateResponse(SQLModel):
     start_date: date
     education_level: str
     assigned_cell: int | None = None
+    prison_name: str | None = None
+    release_date: date | None = None
