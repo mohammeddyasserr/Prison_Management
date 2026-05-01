@@ -4,13 +4,16 @@ from routers import prison
 from routers import block
 from routers import cell
 from routers import staff
-import models
+from routers import incidents
+from routers import disciplinary
+from routers import visit
+from routers import transfer
 from routers import inmate
 from routers import legal_case
 from routers import shift
 from routers import doctor
 from routers import medical_visit
-
+import models
 
 app = FastAPI()
 
@@ -29,3 +32,7 @@ app.include_router(legal_case.router)
 app.include_router(shift.router)
 app.include_router(doctor.router)
 app.include_router(medical_visit.router)
+app.include_router(visit.router)
+app.include_router(transfer.router)
+app.include_router(incidents.router)
+app.include_router(disciplinary.router)
