@@ -7,3 +7,4 @@ itsdangerous
 mysql-connector-python
 pydantic
 python-dotenv
+sqlmodel
