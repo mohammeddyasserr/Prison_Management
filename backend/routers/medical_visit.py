@@ -22,8 +22,15 @@ def get_medical_visits(session: SessionDep):
     JOIN inmate i ON hv.inmate_id = i.inmate_id
     JOIN doctor d ON hv.doctor_id = d.national_id
     """
-    result = session.exec(text(query)).mappings().all()
-    return result
+    try:
+        result = session.exec(text(query)).mappings().all()
+        if not result:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No medical visits found")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred: {str(e)}")
 
 @router.get("/prison/{prison_id}", response_model=List[schemas.MedicalVisitResponse])
 def get_medical_visits_by_prison(prison_id: int, session: SessionDep):
@@ -39,8 +46,15 @@ def get_medical_visits_by_prison(prison_id: int, session: SessionDep):
     JOIN doctor d ON hv.doctor_id = d.national_id
     WHERE d.prison_id = :prison_id
     """
-    result = session.exec(text(query).bindparams(prison_id=prison_id)).mappings().all()
-    return result
+    try:
+        result = session.exec(text(query).bindparams(prison_id=prison_id)).mappings().all()
+        if not result:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No medical visits found for the specified prison")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred: {str(e)}")
 
 @router.get("/inmate/{inmate_id}", response_model=List[schemas.MedicalVisitResponse])
 def get_medical_visits_by_inmate(inmate_id: int, session: SessionDep):
@@ -56,8 +70,15 @@ def get_medical_visits_by_inmate(inmate_id: int, session: SessionDep):
     JOIN doctor d ON hv.doctor_id = d.national_id
     WHERE hv.inmate_id = :inmate_id
     """
-    result = session.exec(text(query).bindparams(inmate_id=inmate_id)).mappings().all()
-    return result
+    try:
+        result = session.exec(text(query).bindparams(inmate_id=inmate_id)).mappings().all()
+        if not result:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No medical visits found for the specified inmate")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred: {str(e)}")
 
 @router.get("/doctor/{doctor_id}", response_model=List[schemas.MedicalVisitResponse])
 def get_medical_visits_by_doctor(doctor_id: str, session: SessionDep):
@@ -73,8 +94,15 @@ def get_medical_visits_by_doctor(doctor_id: str, session: SessionDep):
     JOIN doctor d ON hv.doctor_id = d.national_id
     WHERE hv.doctor_id = :doctor_id
     """
-    result = session.exec(text(query).bindparams(doctor_id=doctor_id)).mappings().all()
-    return result
+    try:
+        result = session.exec(text(query).bindparams(doctor_id=doctor_id)).mappings().all()
+        if not result:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No medical visits found for the specified doctor")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred: {str(e)}")
 
 @router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED)
 def create_medical_visit(visit: schemas.MedicalVisitCreate, session: SessionDep):

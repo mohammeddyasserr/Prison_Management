@@ -15,8 +15,15 @@ def get_all_doctors(session: SessionDep):
         FROM doctor d
         JOIN prison p ON d.prison_id = p.prison_id
     """)
-    result = session.exec(statement).mappings().all()
-    return result
+    try:
+        result = session.exec(statement).mappings().all()
+        if not result:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No doctors found")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred: {str(e)}")
 
 @router.get("/prison/{prison_id}", response_model=list[schemas.DoctorResponse])
 def get_doctors_by_prison(prison_id: int, session: SessionDep):
@@ -26,8 +33,15 @@ def get_doctors_by_prison(prison_id: int, session: SessionDep):
         JOIN prison p ON d.prison_id = p.prison_id
         WHERE d.prison_id = :prison_id
     """)
-    result = session.exec(statement, params={"prison_id": prison_id}).mappings().all()
-    return result
+    try:
+        result = session.exec(statement, params={"prison_id": prison_id}).mappings().all()
+        if not result:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No doctors found for the specified prison")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An error occurred: {str(e)}")
 
 @router.post("/", response_model=schemas.DoctorCreate, status_code=status.HTTP_201_CREATED)
 def create_doctor(doctor: schemas.DoctorCreate, session: SessionDep):
