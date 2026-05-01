@@ -1,1 +1,1 @@
-from . import prison , inmate
+from . import prison, inmate, legal_case
