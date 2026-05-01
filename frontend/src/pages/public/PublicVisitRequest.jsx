@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './PublicVisitRequest.module.css';
+import { getInmates, getPrisons } from '../../data/mockData';
 
 const initialFormData = {
   inmate_national_id: '',
@@ -16,13 +17,34 @@ const initialFormData = {
 
 const relationships = ['Spouse', 'Parent', 'Sibling', 'Friend', 'Lawyer', 'Other'];
 
+const TIME_SLOTS = [
+  { value: '09:00-10:00', label: '9:00 AM – 10:00 AM' },
+  { value: '10:00-11:00', label: '10:00 AM – 11:00 AM' },
+  { value: '11:00-12:00', label: '11:00 AM – 12:00 PM' },
+  { value: '12:00-13:00', label: '12:00 PM – 1:00 PM' },
+  { value: '13:00-14:00', label: '1:00 PM – 2:00 PM' },
+  { value: '14:00-15:00', label: '2:00 PM – 3:00 PM' },
+];
+
+const getUpcomingDays = () => {
+  const days = [];
+  const today = new Date();
+  for (let i = 1; i <= 14; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    if (date.getDay() !== 5 && date.getDay() !== 6) {
+      days.push(date.toISOString().split('T')[0]);
+    }
+  }
+  return days;
+};
+
 export const PublicVisitRequest = () => {
   const [formData, setFormData] = useState(initialFormData);
   const [context, setContext] = useState({
     loading: false,
     checkedId: '',
     inmate: null,
-    slots: [],
     error: '',
   });
   const [submitState, setSubmitState] = useState({
@@ -31,7 +53,7 @@ export const PublicVisitRequest = () => {
     error: '',
   });
 
-  const minDate = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const upcomingDays = useMemo(() => getUpcomingDays(), []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -39,63 +61,52 @@ export const PublicVisitRequest = () => {
       const next = { ...current, [name]: value };
       if (name === 'inmate_national_id') {
         next.time_slot = '';
-        setContext({ loading: false, checkedId: '', inmate: null, slots: [], error: '' });
+        setContext({ loading: false, checkedId: '', inmate: null, error: '' });
       }
       return next;
     });
   };
 
-  const lookupInmate = async () => {
+  const lookupInmate = () => {
     const inmateNationalId = formData.inmate_national_id.trim();
     if (!inmateNationalId) {
-      setContext({ loading: false, checkedId: '', inmate: null, slots: [], error: 'Enter the inmate National ID first.' });
+      setContext({ loading: false, checkedId: '', inmate: null, error: 'Enter the inmate National ID first.' });
       return false;
     }
 
     setContext((current) => ({ ...current, loading: true, error: '' }));
 
-    try {
-      const response = await fetch(`/api/visit-request/context?inmate_national_id=${encodeURIComponent(inmateNationalId)}`);
-      const result = await response.json();
+    const inmates = getInmates();
+    const prisons = getPrisons();
+    const found = inmates.find(i => i.national_id === inmateNationalId);
 
-      if (result.success) {
-        setContext({
-          loading: false,
-          checkedId: inmateNationalId,
-          inmate: result.inmate,
-          slots: result.slots || [],
-          error: '',
-        });
-        return true;
-      }
-
+    if (found) {
+      const prison = prisons.find(p => p.prison_id === found.assigned_prison);
       setContext({
         loading: false,
         checkedId: inmateNationalId,
-        inmate: null,
-        slots: [],
-        error: result.error || 'Unable to find the inmate.',
+        inmate: { ...found, prison_name: prison?.name || '—' },
+        error: '',
       });
-      return false;
-    } catch {
-      setContext({
-        loading: false,
-        checkedId: inmateNationalId,
-        inmate: null,
-        slots: [],
-        error: 'Unable to verify inmate details right now.',
-      });
-      return false;
+      return true;
     }
+
+    setContext({
+      loading: false,
+      checkedId: inmateNationalId,
+      inmate: null,
+      error: 'Unable to find the inmate with this National ID.',
+    });
+    return false;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setSubmitState({ submitting: true, success: '', error: '' });
 
     let canSubmit = true;
     if (context.checkedId !== formData.inmate_national_id.trim()) {
-      canSubmit = await lookupInmate();
+      canSubmit = lookupInmate();
     }
 
     if (!canSubmit) {
@@ -103,39 +114,17 @@ export const PublicVisitRequest = () => {
       return;
     }
 
-    try {
-      const response = await fetch('/api/visit-request/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      const result = await response.json();
-
-      if (result.success) {
-        setSubmitState({
-          submitting: false,
-          success: result.message,
-          error: '',
-        });
-        setFormData(initialFormData);
-        setContext({ loading: false, checkedId: '', inmate: null, slots: [], error: '' });
-      } else {
-        setSubmitState({
-          submitting: false,
-          success: '',
-          error: result.error || 'Could not submit your visit request.',
-        });
-      }
-    } catch {
+    // Simulate successful submission with mock data
+    setTimeout(() => {
       setSubmitState({
         submitting: false,
-        success: '',
-        error: 'Connection error. Please try again.',
+        success: 'Your visit request has been submitted successfully. You will be notified once it is reviewed.',
+        error: '',
       });
-    }
+      setFormData(initialFormData);
+      setContext({ loading: false, checkedId: '', inmate: null, error: '' });
+    }, 500);
   };
-
-  const hasSlots = context.slots.length > 0;
 
   return (
     <div className={styles.page}>
@@ -145,13 +134,18 @@ export const PublicVisitRequest = () => {
           <p>Submit a visit request to an inmate. No account is needed.</p>
         </div>
 
-        {submitState.success && <div className={`${styles.alert} ${styles.success}`}>{submitState.success}</div>}
-        {(submitState.error || context.error) && <div className={`${styles.alert} ${styles.error}`}>{submitState.error || context.error}</div>}
+        {submitState.success && (
+          <div className={`${styles.alert} ${styles.success}`}>{submitState.success}</div>
+        )}
+        {(submitState.error || context.error) && (
+          <div className={`${styles.alert} ${styles.error}`}>{submitState.error || context.error}</div>
+        )}
 
         <div className={styles.card}>
           <form onSubmit={handleSubmit} className={styles.form}>
-            <h3 className={styles.sectionTitle}>Inmate Information</h3>
 
+            {/* Inmate Information */}
+            <h3 className={styles.sectionTitle}>Inmate Information</h3>
             <div className={styles.lookupRow}>
               <div className={styles.formGroup}>
                 <label htmlFor="inmate_national_id">Inmate National ID *</label>
@@ -166,7 +160,12 @@ export const PublicVisitRequest = () => {
                   required
                 />
               </div>
-              <button type="button" className={`${styles.button} ${styles.primaryButton} ${styles.lookupButton}`} onClick={lookupInmate} disabled={context.loading}>
+              <button
+                type="button"
+                className={`${styles.button} ${styles.primaryButton} ${styles.lookupButton}`}
+                onClick={lookupInmate}
+                disabled={context.loading}
+              >
                 {context.loading ? 'Checking...' : 'Check Inmate'}
               </button>
             </div>
@@ -179,37 +178,66 @@ export const PublicVisitRequest = () => {
                 </div>
                 <div>
                   <span className={styles.contextLabel}>Prison</span>
-                  <strong>{context.inmate.prison_name || 'Assigned Prison'}</strong>
+                  <strong>{context.inmate.prison_name}</strong>
                 </div>
               </div>
             )}
 
+            {/* Visitor Information */}
             <h3 className={styles.sectionTitle}>Your Information</h3>
-
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
                 <label htmlFor="visitor_name">Full Name *</label>
-                <input id="visitor_name" name="visitor_name" type="text" value={formData.visitor_name} onChange={handleChange} className={styles.formControl} required />
+                <input
+                  id="visitor_name"
+                  name="visitor_name"
+                  type="text"
+                  value={formData.visitor_name}
+                  onChange={handleChange}
+                  className={styles.formControl}
+                  required
+                />
               </div>
               <div className={styles.formGroup}>
                 <label htmlFor="visitor_national_id">Your National ID *</label>
-                <input id="visitor_national_id" name="visitor_national_id" type="text" value={formData.visitor_national_id} onChange={handleChange} className={styles.formControl} required />
+                <input
+                  id="visitor_national_id"
+                  name="visitor_national_id"
+                  type="text"
+                  value={formData.visitor_national_id}
+                  onChange={handleChange}
+                  className={styles.formControl}
+                  required
+                />
               </div>
             </div>
 
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
                 <label htmlFor="relationship">Relationship to Inmate *</label>
-                <select id="relationship" name="relationship" value={formData.relationship} onChange={handleChange} className={styles.formControl} required>
+                <select
+                  id="relationship"
+                  name="relationship"
+                  value={formData.relationship}
+                  onChange={handleChange}
+                  className={styles.formControl}
+                  required
+                >
                   <option value="">— Select —</option>
-                  {relationships.map((relationship) => (
-                    <option key={relationship} value={relationship}>{relationship}</option>
+                  {relationships.map((r) => (
+                    <option key={r} value={r}>{r}</option>
                   ))}
                 </select>
               </div>
               <div className={styles.formGroup}>
                 <label htmlFor="visit_type">Visit Type</label>
-                <select id="visit_type" name="visit_type" value={formData.visit_type} onChange={handleChange} className={styles.formControl}>
+                <select
+                  id="visit_type"
+                  name="visit_type"
+                  value={formData.visit_type}
+                  onChange={handleChange}
+                  className={styles.formControl}
+                >
                   <option value="Regular">Regular Visit</option>
                   <option value="Legal">Legal Visit (Lawyer Consultation)</option>
                 </select>
@@ -219,53 +247,82 @@ export const PublicVisitRequest = () => {
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
                 <label htmlFor="phone">Phone</label>
-                <input id="phone" name="phone" type="tel" value={formData.phone} onChange={handleChange} className={styles.formControl} />
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className={styles.formControl}
+                />
               </div>
               <div className={styles.formGroup}>
                 <label htmlFor="email">Email</label>
-                <input id="email" name="email" type="email" value={formData.email} onChange={handleChange} className={styles.formControl} />
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className={styles.formControl}
+                />
               </div>
             </div>
 
+            {/* Schedule */}
             <h3 className={styles.sectionTitle}>Schedule</h3>
-
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
                 <label htmlFor="visit_date">Preferred Date *</label>
-                <input id="visit_date" name="visit_date" type="date" min={minDate} value={formData.visit_date} onChange={handleChange} className={styles.formControl} required />
+                <select
+                  id="visit_date"
+                  name="visit_date"
+                  value={formData.visit_date}
+                  onChange={handleChange}
+                  className={styles.formControl}
+                  required
+                >
+                  <option value="">— Select a date —</option>
+                  {upcomingDays.map(date => (
+                    <option key={date} value={date}>
+                      {new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className={styles.formGroup}>
                 <label htmlFor="time_slot">Preferred Time Slot *</label>
-                {hasSlots ? (
-                  <select id="time_slot" name="time_slot" value={formData.time_slot} onChange={handleChange} className={styles.formControl} required>
-                    <option value="">— Select an available slot —</option>
-                    {context.slots.map((slot) => (
-                      <option key={slot.slot_id} value={`${slot.start_time}-${slot.end_time}`}>
-                        {slot.slot_label} ({slot.start_time}-{slot.end_time})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    id="time_slot"
-                    name="time_slot"
-                    type="text"
-                    value={formData.time_slot}
-                    onChange={handleChange}
-                    className={styles.formControl}
-                    placeholder="e.g. 09:00-10:00"
-                    required
-                  />
-                )}
+                <select
+                  id="time_slot"
+                  name="time_slot"
+                  value={formData.time_slot}
+                  onChange={handleChange}
+                  className={styles.formControl}
+                  required
+                >
+                  <option value="">— Select a time slot —</option>
+                  {TIME_SLOTS.map(slot => (
+                    <option key={slot.value} value={slot.value}>
+                      {slot.label}
+                    </option>
+                  ))}
+                </select>
                 <p className={styles.helperText}>
-                  {hasSlots
-                    ? 'Available slots are shown for the inmate prison.'
-                    : 'If no slots appear, enter your preferred time manually like the original portal.'}
+                  Visiting hours: 9:00 AM – 3:00 PM. Max 10 visitors per slot.
                 </p>
               </div>
             </div>
 
-            <button type="submit" className={`${styles.button} ${styles.primaryButton} ${styles.submitButton}`} disabled={submitState.submitting}>
+            <button
+              type="submit"
+              className={`${styles.button} ${styles.primaryButton} ${styles.submitButton}`}
+              disabled={submitState.submitting}
+            >
               {submitState.submitting ? 'Submitting...' : 'Submit Visit Request'}
             </button>
           </form>
