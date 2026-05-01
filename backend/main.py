@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from database import create_db_and_tables
-from routers import prison , inmate
-
+from routers import prison 
+from routers import inmate
+from routers import legal_case
 
 app = FastAPI()
 
@@ -11,5 +12,4 @@ def on_startup():
 
 app.include_router(prison.router)
 app.include_router(inmate.router)
-
-
+app.include_router(legal_case.router)

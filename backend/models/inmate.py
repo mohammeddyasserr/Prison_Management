@@ -9,11 +9,8 @@ class InmateBase(SQLModel):
     nationality: str
     occupation: str | None = None
     start_date: date
-    expected_release_date: date | None = None
-    assigned_prison: int | None = None
-    assigned_block: int | None = None
+    education_level: str
     assigned_cell: int | None = None
-    status: str | None = "active"
 
 class Inmate(InmateBase, table=True):
     __tablename__ = "inmate"
