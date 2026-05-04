@@ -1,2 +1,6 @@
 from .prison import PrisonResponse, PrisonCreate
-from .visit import VisitCreate, VisitUpdate, VisitResponse
+from .visit import (
+    VisitCreate, VisitUpdate, VisitResponse,
+    VisitorCreate, VisitorResponse,
+    TimeslotResponse,
+)
