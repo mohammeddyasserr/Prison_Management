@@ -11,6 +11,7 @@ from .visit import VisitCreate, VisitUpdate, VisitResponse
 from .transfer import TransferCreate, TransferUpdate, TransferResponse
 from .incidents import IncidentResponse, IncidentCreate, IncidentUpdate
 from .disciplinary import DisciplinaryResponse, DisciplinaryCreate, DisciplinaryUpdate
+from .login import UserLogin
 
 __all__ = [
     "PrisonCreate", "PrisonResponse",

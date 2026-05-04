@@ -13,6 +13,7 @@ from routers import legal_case
 from routers import shift
 from routers import doctor
 from routers import medical_visit
+from routers import authentication
 import models
 
 app = FastAPI()
@@ -36,3 +37,4 @@ app.include_router(visit.router)
 app.include_router(transfer.router)
 app.include_router(incidents.router)
 app.include_router(disciplinary.router)
+app.include_router(authentication.router)
