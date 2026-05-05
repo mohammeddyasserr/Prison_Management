@@ -96,7 +96,7 @@ def get_visit(visit_id: int, db: SessionDep):
 
 
 @router.post("", response_model=schemas.VisitResponse, status_code=status.HTTP_201_CREATED)
-def create_visit(request: schemas.VisitCreate, db: SessionDep):
+async def create_visit(request: schemas.VisitCreate, db: SessionDep):
     # Validate inmate exists
     inmate = db.execute(text("SELECT inmate_id FROM inmate WHERE inmate_id = :id"),
                         {"id": request.inmate_id}).fetchone()
@@ -160,10 +160,7 @@ def create_visit(request: schemas.VisitCreate, db: SessionDep):
         except Exception as e:
             # You might want to log this error instead of failing the request
             pass
-     return new_visit
-
-
-    
+    return new_visit
 
 
 @router.put("/{visit_id}", response_model=schemas.VisitResponse, status_code=status.HTTP_200_OK)
