@@ -139,7 +139,7 @@ export const PrisonDetail = () => {
               </div>
             )}
 
-            {hasRole('admin', 'prison_manager') && (
+            {hasRole('admin', 'manager') && (
               <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
                 <input
                   type="number"
@@ -161,7 +161,7 @@ export const PrisonDetail = () => {
           <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px' }}>No blocks created yet.</p>
         )}
 
-        {hasRole('admin', 'prison_manager') && (
+        {hasRole('admin', 'manager') && (
           <div style={{ marginTop: '24px', borderTop: '1px dashed var(--border-color)', paddingTop: '20px' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>Add New Block</h3>
             <form onSubmit={addBlock} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px', alignItems: 'flex-end' }}>

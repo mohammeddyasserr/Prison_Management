@@ -34,7 +34,7 @@ export const VisitsList = () => {
       <div className={styles.header}>
         <h1 className={styles.title}>Visit Management</h1>
         <div className={styles.actions}>
-          {hasRole('prison_manager') && (
+          {hasRole('manager') && (
             <Link to="/visits/slots" className={`${styles.btn} ${styles.btnOutline}`}>
               <Clock size={16} /> Manage Slots
             </Link>
@@ -54,7 +54,7 @@ export const VisitsList = () => {
               <th>Time</th>
               <th>Type</th>
               <th>Status</th>
-              {hasRole('prison_manager') && <th>Actions</th>}
+              {hasRole('manager') && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -77,7 +77,7 @@ export const VisitsList = () => {
                   </span>
                   {v.denial_reason && <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{v.denial_reason}</div>}
                 </td>
-                {hasRole('prison_manager') && (
+                {hasRole('manager') && (
                   <td className={styles.actions}>
                     {v.status === 'Pending' ? (
                       <>
@@ -103,7 +103,7 @@ export const VisitsList = () => {
                 )}
               </tr>
             )) : (
-              <tr><td colSpan={hasRole('prison_manager') ? '9' : '8'} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No visit requests found.</td></tr>
+              <tr><td colSpan={hasRole('manager') ? '9' : '8'} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No visit requests found.</td></tr>
             )}
           </tbody>
         </table>

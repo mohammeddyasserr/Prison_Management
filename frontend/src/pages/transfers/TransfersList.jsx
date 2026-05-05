@@ -17,21 +17,41 @@ export const TransfersList = () => {
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Transfer Requests...</div>;
 
-  const handleTransferAction = (transferId, action) => {
-    setTransfers((current) =>
-      current.map((transfer) =>
-        transfer.transfer_id === transferId
-          ? { ...transfer, status: action === 'approve' ? 'Approved' : 'Denied' }
-          : transfer
-      )
-    );
+  const handleTransferAction = async (transferId, action) => {
+    try {
+      const status = action === 'approve' ? 'Approved' : 'Denied';
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      const approval_date = new Date().toISOString().split('T')[0];
+      const response = await fetch(`/api/transfer/${transferId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status,
+          approved_by: Number(user.user_id),
+          approval_date
+        })
+      });
+
+      if (!response.ok) throw new Error('Action failed');
+
+      setTransfers((current) =>
+        current.map((transfer) =>
+          transfer.transfer_id === transferId
+            ? { ...transfer, status, approval_date }
+            : transfer
+        )
+      );
+    } catch (err) {
+      console.error('Failed to update transfer', err);
+    }
   };
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>Transfer Requests</h1>
-        {hasRole('prison_manager') && (
+        {hasRole('manager') && (
           <Link to="/transfers/add" className={`${styles.btn} ${styles.btnPrimary}`}>
             <Plus size={16} /> Request Transfer
           </Link>
@@ -79,7 +99,7 @@ export const TransfersList = () => {
                   </span>
                 </td>
                 <td style={{ verticalAlign: 'middle', fontSize: '0.8rem', color: 'var(--text-secondary)', wordBreak: 'break-word' }}>
-                  {t.approval_date || '—'}
+                  {t.approval_date ? t.approval_date : (t.requested_at ? t.requested_at.split('T')[0] : '—')}
                 </td>
                 {hasRole('admin') && (
                   <td style={{ verticalAlign: 'middle' }}>

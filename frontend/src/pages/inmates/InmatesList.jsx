@@ -51,12 +51,12 @@ export const InmatesList = () => {
                 <td>{inmate.gender}</td>
                 <td>{inmate.prison_name || 'Unassigned'}</td>
                 <td>{inmate.start_date || '—'}</td>
-                <td>{inmate.expected_release_date || '—'}</td>
+                <td>{inmate.release_date || '—'}</td>
                 <td className={styles.actions}>
                   <Link to={`/inmates/${inmate.inmate_id}`} className={`${styles.btn} ${styles.btnOutline}`}>
                     <Eye size={14} /> View
                   </Link>
-                  {hasRole('prison_manager') && !inmate.assigned_cell && (
+                  {hasRole('manager') && !inmate.assigned_cell && (
                     <Link to={`/inmates/${inmate.inmate_id}/assign`} className={`${styles.btn}`} style={{ backgroundColor: 'var(--color-warning)', color: 'white' }}>
                       <UserPlus size={14} /> Assign Cell
                     </Link>

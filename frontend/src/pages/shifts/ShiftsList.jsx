@@ -77,7 +77,7 @@ export const ShiftsList = () => {
     <div className={styles.container}>
       <h1 className={styles.title}>Shift Management</h1>
 
-      {hasRole('prison_manager') && (
+      {hasRole('manager') && (
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px', marginBottom: '24px', maxWidth: '100%' }}>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px' }}>Assign Shift</h2>
           <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
@@ -129,7 +129,7 @@ export const ShiftsList = () => {
                 <th>Shift</th>
                 <th>Date</th>
                 <th>Time</th>
-                {hasRole('prison_manager') && <th>Actions</th>}
+                {hasRole('manager') && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -142,7 +142,7 @@ export const ShiftsList = () => {
                   <td><span className={`${styles.badge} ${styles.badgeInfo}`}>{s.shift_type}</span></td>
                   <td>{s.date}</td>
                   <td>{s.start_time} — {s.end_time}</td>
-                  {hasRole('prison_manager') && (
+                  {hasRole('manager') && (
                     <td className={styles.actions}>
                       <button className={`${styles.btn} ${styles.badgeDanger}`} style={{ border: 'none', cursor: 'pointer' }} onClick={() => removeShift(s.shift_id)}>
                         <Trash2 size={14} /> Remove
@@ -151,7 +151,7 @@ export const ShiftsList = () => {
                   )}
                 </tr>
               )) : (
-                <tr><td colSpan={hasRole('prison_manager') ? '7' : hasRole('admin') ? '7' : '5'} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No shifts found.</td></tr>
+                <tr><td colSpan={hasRole('manager') ? '7' : hasRole('admin') ? '7' : '5'} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No shifts found.</td></tr>
               )}
             </tbody>
           </table>

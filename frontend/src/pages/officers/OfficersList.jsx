@@ -46,7 +46,7 @@ export const OfficersList = () => {
                 <td>{o.national_id}</td>
                 <td><strong>{o.name}</strong></td>
                 <td>
-                  <span className={`${styles.badge} ${o.role === 'prison_manager' ? styles.badgeInfo : styles.badgeSuccess}`}>
+                  <span className={`${styles.badge} ${o.role === 'manager' ? styles.badgeInfo : styles.badgeSuccess}`}>
                     {o.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                   </span>
                 </td>

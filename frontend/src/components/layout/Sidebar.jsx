@@ -28,7 +28,7 @@ const navItemsByRole = {
       items: [{ name: 'ML Predictions', icon: '🤖', path: '/ml' }],
     },
   ],
-  prison_manager: [
+  manager: [
     {
       section: 'Main',
       items: [{ name: 'Dashboard', icon: '📊', path: '/dashboard/manager' }],

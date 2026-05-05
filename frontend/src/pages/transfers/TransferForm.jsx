@@ -33,7 +33,25 @@ export const TransferForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await postForm('/transfers/add', formData);
+      const inmate = data.inmates.find(i => String(i.inmate_id) === String(formData.inmate_id));
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      const payload = {
+        inmate_id: Number(formData.inmate_id),
+        destination_prison: Number(formData.destination_prison),
+        reason: formData.reason,
+        requesting_prison: Number(inmate?.assigned_prison || 0),
+        manager_id: Number(user.user_id || 0)
+      };
+
+      const response = await fetch('/api/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) throw new Error('Submission failed');
+
       toast.success('Request Submitted', 'The inter-prison transfer request has been submitted for review.');
       navigate('/transfers');
     } catch (err) {

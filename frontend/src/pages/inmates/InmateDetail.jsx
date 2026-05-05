@@ -39,7 +39,7 @@ export const InmateDetail = () => {
       <div className={styles.header}>
         <h1 className={styles.title}>Inmate Profile — {inmate.full_name}</h1>
         <div className={styles.actions}>
-          {hasRole('prison_manager') && !inmate.assigned_cell && (
+          {hasRole('manager') && !inmate.assigned_cell && (
             <Link to={`/inmates/${id}/assign`} className={`${styles.btn} ${styles.badgeWarning}`} style={{ color: 'white' }}>
               Assign to Cell
             </Link>
@@ -60,6 +60,7 @@ export const InmateDetail = () => {
           <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Nationality:</span><br />{inmate.nationality || '—'}</div>
           <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Occupation:</span><br />{inmate.occupation || '—'}</div>
           <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Start Date:</span><br />{inmate.start_date || '—'}</div>
+          <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Release Date:</span><br />{inmate.release_date || '—'}</div>
           <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Status:</span><br />
             <span className={`${styles.badge} ${inmate.status === 'active' ? styles.badgeSuccess : inmate.status === 'released' ? styles.badgeInfo : styles.badgeWarning}`}>
               {inmate.status}

@@ -25,7 +25,7 @@ export const HealthcareOverview = () => {
       <div className={styles.header}>
         <h1 className={styles.title}>Healthcare</h1>
         <div className={styles.actions}>
-          {hasRole('admin', 'prison_manager') && (
+          {hasRole('admin', 'manager') && (
             <>
               <Link to="/healthcare/doctors/add" className={`${styles.btn} ${styles.btnPrimary}`}>
                 <Plus size={16} /> Add Doctor

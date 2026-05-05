@@ -126,7 +126,7 @@ export const PrisonForm = () => {
           <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Assign Manager</label>
             <select name="manager_id" value={formData.manager_id} onChange={handleChange} className={styles.formControl}>
-              <option value="">— No Manager —</option>
+              <option value="">— No Officer Assigned —</option>
               {managers.map(m => (
                 <option key={m.national_id} value={m.national_id}>{m.name} ({m.national_id})</option>
               ))}
