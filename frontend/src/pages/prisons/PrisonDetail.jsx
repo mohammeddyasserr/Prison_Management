@@ -9,7 +9,7 @@ export const PrisonDetail = () => {
   const { id } = useParams();
   const [data, setData] = useState({ prison: null, blocks: [] });
   const [loading, setLoading] = useState(true);
-  const [blockForm, setBlockForm] = useState({ name: '', security_level: 'Maximum' });
+  const [blockForm, setBlockForm] = useState({ security_level: 'High' });
   const [cellCapacityByBlock, setCellCapacityByBlock] = useState({});
   const toast = useToast();
 
@@ -166,13 +166,9 @@ export const PrisonDetail = () => {
             <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>Add New Block</h3>
             <form onSubmit={addBlock} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px', alignItems: 'flex-end' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Block Name</label>
-                <input type="text" value={blockForm.name} onChange={(e) => setBlockForm((current) => ({ ...current, name: e.target.value }))} placeholder="e.g. Block A" style={{ width: '100%', padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }} required />
-              </div>
-              <div>
                 <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Security Level</label>
                 <select value={blockForm.security_level} onChange={(e) => setBlockForm((current) => ({ ...current, security_level: e.target.value }))} style={{ width: '100%', padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}>
-                  <option>Maximum</option><option>Medium</option><option>Minimum</option><option>High</option>
+                  <option>High</option><option>Medium</option><option>Low</option>
                 </select>
               </div>
               <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>+ Add Block</button>
