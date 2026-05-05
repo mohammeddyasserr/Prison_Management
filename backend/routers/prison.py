@@ -131,11 +131,21 @@ def create_prison(request: schemas.PrisonCreate, db: SessionDep):
             :has_visitation_hall, :visitation_hall_capacity
         )
     """), request.model_dump())
-    db.commit()
     
-    # In SQLite, result.lastrowid gives the ID of the new row
     new_id = result.lastrowid
+    
+    if request.manager_id:
+        transfer_officer(request.manager_id, new_id, db)
+        
+    db.commit()
     return get_prison_by_id(new_id, db)
+
+def transfer_officer(national_id: str, prison_id: int, db: SessionDep):
+    db.execute(text("""
+        UPDATE officer
+        SET prison_id = :prison_id
+        WHERE national_id = :national_id
+    """), {"prison_id": prison_id, "national_id": national_id})
 
 @router.put("/{id}", status_code=status.HTTP_200_OK, response_model=schemas.PrisonResponse)
 def update_prison(id: int, request: schemas.PrisonCreate, db: SessionDep):
