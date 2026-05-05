@@ -126,13 +126,44 @@ def create_visit(request: schemas.VisitCreate, db: SessionDep):
 
     new_id = result.fetchone()[0]
     db.commit()
-
     new_visit = db.execute(text(f"""
         {_visit_query()}
         WHERE v.visit_id = :visit_id
     """), {"visit_id": new_id}).fetchone()
+    
+    
+    # Get visitor email and name
+    visitor_info = db.execute(text("""
+        SELECT email, full_name FROM visitor WHERE national_id = :visitor_id
+    """), {"visitor_id": request.visitor_id}).fetchone()
 
-    return new_visit
+    inmate_info = db.execute(text("""
+        SELECT full_name FROM inmate WHERE inmate_id = :inmate_id
+    """), {"inmate_id": request.inmate_id}).fetchone()
+
+    # Get the prison name (assuming one primary prison facility for the system or getting the first)
+    prison_info = db.execute(text("""
+        SELECT name FROM prison LIMIT 1
+    """)).fetchone()
+    prison_name = prison_info.name if prison_info else "Central Prison"
+
+    if visitor_info and visitor_info.email and inmate_info:
+        from email_service import visit_requested_email
+        try:
+            await visit_requested_email(
+                email=visitor_info.email,
+                visitor_name=visitor_info.full_name,
+                inmate_name=inmate_info.full_name,
+                visit_date=str(request.visit_date),
+                prison_name=prison_name
+            )
+        except Exception as e:
+            # You might want to log this error instead of failing the request
+            pass
+     return new_visit
+
+
+    
 
 
 @router.put("/{visit_id}", response_model=schemas.VisitResponse, status_code=status.HTTP_200_OK)

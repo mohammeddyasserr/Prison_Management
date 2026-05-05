@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { postForm } from '../../lib/http';
-import { getPrisons } from '../../data/mockData';
-
+import { postForm } from '../../services/authentication';
+import { useToast } from '../../context/ToastContext';
 
 export const DoctorForm = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [formData, setFormData] = useState({
     national_id: '',
     name: '',
@@ -18,8 +18,10 @@ export const DoctorForm = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setPrisons(getPrisons());
-    setLoading(false);
+    fetch('/api/prison')
+      .then(r => r.json())
+      .then(data => { setPrisons(data); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
 
   const handleChange = (e) => {
@@ -29,8 +31,13 @@ export const DoctorForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await postForm('/healthcare/doctors/add', formData);
-    navigate('/healthcare');
+    try {
+      await postForm('/healthcare/doctors/add', formData);
+      toast.success('Doctor Registered', `Dr. ${formData.name} has been added to the healthcare system.`);
+      navigate('/healthcare');
+    } catch (err) {
+      toast.error('Registration Failed', 'There was an error registering the doctor.');
+    }
   };
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
@@ -39,7 +46,7 @@ export const DoctorForm = () => {
     <div className={styles.container}>
       <h1 className={styles.title}>Add Doctor</h1>
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '600px' }}>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '100%' }}>
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
             <div>

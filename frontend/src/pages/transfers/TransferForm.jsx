@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { postForm } from '../../lib/http';
-import { getInmates, getPrisons } from '../../data/mockData';
-
+import { postForm } from '../../services/authentication';
+import { useToast } from '../../context/ToastContext';
 
 export const TransferForm = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [formData, setFormData] = useState({
     inmate_id: '',
     destination_prison: '',
@@ -16,11 +16,13 @@ export const TransferForm = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setData({
-      inmates: getInmates().filter(i => i.status === 'active'),
-      prisons: getPrisons(),
-    });
-    setLoading(false);
+    Promise.all([
+      fetch('/api/inmates').then(r => r.json()),
+      fetch('/api/prison').then(r => r.json()),
+    ]).then(([inmates, prisons]) => {
+      setData({ inmates, prisons });
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   const handleChange = (e) => {
@@ -30,8 +32,13 @@ export const TransferForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await postForm('/transfers/add', formData);
-    navigate('/transfers');
+    try {
+      await postForm('/transfers/add', formData);
+      toast.success('Request Submitted', 'The inter-prison transfer request has been submitted for review.');
+      navigate('/transfers');
+    } catch (err) {
+      toast.error('Submission Failed', 'There was an error submitting the transfer request. Please try again.');
+    }
   };
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
@@ -40,7 +47,7 @@ export const TransferForm = () => {
     <div className={styles.container}>
       <h1 className={styles.title}>Request Inter-Prison Transfer</h1>
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '600px' }}>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '100%' }}>
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Inmate *</label>

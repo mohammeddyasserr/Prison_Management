@@ -1,31 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { postForm } from '../../lib/http';
-import { getInmateDetail, getBlocks, getCells } from '../../data/mockData';
+import { postForm } from '../../services/authentication';
 
 export const InmateAssignForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({
-    block_id: '',
-    cell_id: ''
-  });
+  const [formData, setFormData] = useState({ block_id: '', cell_id: '' });
 
   useEffect(() => {
-    const result = getInmateDetail(id);
-    if (!result) { setLoading(false); return; }
-
-    const blocks = getBlocks().filter(b => b.prison_id === result.inmate.assigned_prison);
-    const block_cells = {};
-    blocks.forEach(b => {
-      block_cells[b.block_id] = getCells().filter(c => c.block_id === b.block_id);
-    });
-
-    setData({ inmate: result.inmate, blocks, block_cells });
-    setLoading(false);
+    fetch(`/api/inmates/${id}`)
+      .then(r => r.json())
+      .then(async inmate => {
+        // Get blocks+cells for the inmate's prison
+        const prisonRes = await fetch(`/api/prison/${inmate.prison_name ? '' : ''}`);
+        // Find prison via block→cell chain: use inmate assigned_cell or fetch blocks of all prisons
+        const allBlocks = await fetch(`/api/prison`).then(r => r.json())
+          .then(prisons => Promise.all(
+            prisons.map(p => fetch(`/api/prison/${p.prison_id}/blocks-cells`).then(r => r.json()))
+          ));
+        const blocks = allBlocks.flat();
+        setData({ inmate, blocks });
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, [id]);
 
   const handleChange = (e) => {
@@ -53,7 +53,7 @@ export const InmateAssignForm = () => {
     <div className={styles.container}>
       <h1 className={styles.title}>Assign Cell — {inmate.full_name}</h1>
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '600px' }}>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '100%' }}>
         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>
           PRD 4.1 Stage 2: The Prison Manager assigns the inmate to a specific block and cell.
         </p>

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { postForm } from '../../lib/http';
-import { getInmates, getIncidents } from '../../data/mockData';
+import { postForm } from '../../services/authentication';
+import { useToast } from '../../context/ToastContext';
 
 export const DisciplinaryForm = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [formData, setFormData] = useState({
     inmate_id: '',
     incident_id: '',
@@ -19,11 +20,13 @@ export const DisciplinaryForm = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setData({
-      inmates: getInmates().filter(i => i.status === 'active'),
-      incidents: getIncidents(),
-    });
-    setLoading(false);
+    Promise.all([
+      fetch('/api/inmates').then(r => r.json()),
+      fetch('/api/incidents').then(r => r.json()),
+    ]).then(([inmates, incidents]) => {
+      setData({ inmates, incidents });
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   const handleChange = (e) => {
@@ -33,8 +36,13 @@ export const DisciplinaryForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await postForm('/disciplinary/add', formData);
-    navigate('/disciplinary');
+    try {
+      await postForm('/disciplinary/add', formData);
+      toast.success('Record Added', 'The disciplinary action has been recorded.');
+      navigate('/disciplinary');
+    } catch (err) {
+      toast.error('Submission Failed', 'An error occurred while recording the disciplinary action.');
+    }
   };
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
@@ -43,7 +51,7 @@ export const DisciplinaryForm = () => {
     <div className={styles.container}>
       <h1 className={styles.title}>Add Disciplinary Record</h1>
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '700px' }}>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '100%' }}>
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Inmate *</label>
