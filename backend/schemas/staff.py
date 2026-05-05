@@ -7,7 +7,7 @@ class StaffResponse(SQLModel):
     email: str
     phone: str
     role: str
-    prison_name: str
+    prison_name: str | None = None
 
 
 class StaffCreate(SQLModel):

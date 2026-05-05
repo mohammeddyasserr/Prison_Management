@@ -12,7 +12,7 @@ export const PrisonForm = () => {
     name: '',
     location: '',
     type: 'Maximum Security',
-    security_level: 'Maximum',
+    security_level: 'High',
     total_capacity: '',
     manager_id: '',
     has_hospital: false,
@@ -26,8 +26,8 @@ export const PrisonForm = () => {
 
   useEffect(() => {
     const loadData = async () => {
-      const staffRes = await fetch('/api/staff').then(r => r.json()).catch(() => []);
-      setManagers(staffRes.filter(s => s.role === 'manager'));
+      const staffRes = await fetch('/api/staff/officers').then(r => r.json()).catch(() => []);
+      setManagers(staffRes);
 
       if (id) {
         const prison = await fetch(`/api/prison/${id}`).then(r => r.json()).catch(() => null);

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { postForm } from '../../services/authentication';
 import { useToast } from '../../context/ToastContext';
 
 export const OfficerForm = () => {
@@ -13,7 +12,6 @@ export const OfficerForm = () => {
     email: '',
     phone: '',
     address: '',
-    role: 'officer',
     prison_id: '',
     password: ''
   });
@@ -35,11 +33,47 @@ export const OfficerForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await postForm('/staff', formData);
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No token found');
+
+      // The backend schema requires prison_id as int
+      if (!formData.prison_id) {
+        toast.error('Creation Failed', 'Please select an Assigned Prison.');
+        return;
+      }
+
+      const response = await fetch('/api/login/create_officer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          national_id: formData.national_id,
+          name: formData.name,
+          phone: formData.phone,
+          address: formData.address,
+          email: formData.email,
+          password: formData.password,
+          prison_id: parseInt(formData.prison_id)
+        })
+      });
+
+      if (!response.ok) {
+        let errorMsg = 'Submission failed';
+        try {
+          const errData = await response.json();
+          errorMsg = errData.detail || errorMsg;
+        } catch (e) {
+          console.error(e);
+        }
+        throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
+      }
+
       toast.success('Account Created', `Staff account for ${formData.name} has been successfully created.`);
-      navigate('/staff');
+      navigate('/officers');
     } catch (err) {
-      toast.error('Creation Failed', 'There was an error creating the staff account. Please try again.');
+      toast.error('Creation Failed', err.message || 'There was an error creating the staff account. Please check prison selection and unique ID validation.');
     }
   };
 
@@ -80,8 +114,8 @@ export const OfficerForm = () => {
 
           <div style={{ marginBottom: '20px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Assigned Prison</label>
-              <select name="prison_id" value={formData.prison_id} onChange={handleChange} className={styles.formControl}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Assigned Prison *</label>
+              <select name="prison_id" value={formData.prison_id} onChange={handleChange} required className={styles.formControl}>
                 <option value="">— None —</option>
                 {prisons.map(p => (
                   <option key={p.prison_id} value={p.prison_id}>{p.name}</option>
