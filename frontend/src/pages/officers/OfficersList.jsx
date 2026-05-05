@@ -3,21 +3,16 @@ import { Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
 import { hasRole } from '../../services/authentication';
-import { getOfficers, getPrisons } from '../../data/mockData';
 
 export const OfficersList = () => {
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const officers = getOfficers();
-    const prisons = getPrisons();
-    const enriched = officers.map(o => ({
-      ...o,
-      prison_name: prisons.find(p => p.prison_id === o.prison_id)?.name || null
-    }));
-    setOfficers(enriched);
-    setLoading(false);
+    fetch('/api/staff')
+      .then(r => r.json())
+      .then(data => { setOfficers(data); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Staff Records...</div>;
@@ -26,7 +21,7 @@ export const OfficersList = () => {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>Staff Management</h1>
-        {hasRole('super_admin') && (
+        {hasRole('admin') && (
           <Link to="/officers/add" className={`${styles.btn} ${styles.btnPrimary}`}>
             <Plus size={16} /> Add Staff
           </Link>

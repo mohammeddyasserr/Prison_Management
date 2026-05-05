@@ -4,7 +4,6 @@ import { User, Scale, AlertTriangle, ShieldAlert, HeartPulse, LogOut } from 'luc
 import styles from '../EntityStyles.module.css';
 import { hasRole } from '../../services/authentication';
 import { postForm } from '../../services/authentication';
-import { getInmateDetail, getPrisons, getBlocks, getDoctors } from '../../data/mockData';
 
 export const InmateDetail = () => {
   const { id } = useParams();
@@ -12,26 +11,22 @@ export const InmateDetail = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const result = getInmateDetail(id);
-    if (result) {
-      const prisons = getPrisons();
-      const blocks = getBlocks();
-      const doctors = getDoctors();
-      result.inmate.prison_name = prisons.find(p => p.prison_id === result.inmate.assigned_prison)?.name || null;
-      result.inmate.block_name = blocks.find(b => b.block_id === result.inmate.assigned_block)?.name || null;
-      result.medical = result.medical.map(m => ({
-        ...m,
-        doctor_name: doctors.find(d => d.national_id === m.doctor_id)?.name || '—'
-      }));
-    }
-    setData(result);
-    setLoading(false);
+    Promise.all([
+      fetch(`/api/inmates/${id}`).then(r => r.json()),
+      fetch(`/api/incidents/inmate/${id}`).then(r => r.json()).catch(() => []),
+      fetch(`/api/disciplinary/inmate/${id}`).then(r => r.json()).catch(() => []),
+      fetch(`/api/medical_visit/inmate/${id}`).then(r => r.json()).catch(() => []),
+      fetch(`/api/legal_case/${id}`).then(r => r.json()).catch(() => null),
+    ]).then(([inmate, incidents, disciplinary, medical, legal_case]) => {
+      setData({ inmate, incidents, disciplinary, medical, legal_case });
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, [id]);
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Inmate Profile...</div>;
-  if (!data || data.error) return <div style={{ padding: '40px', textAlign: 'center' }}>Inmate not found.</div>;
+  if (!data || !data.inmate) return <div style={{ padding: '40px', textAlign: 'center' }}>Inmate not found.</div>;
 
-  const { inmate, legal_case, incidents, disciplinary, medical } = data;
+  const { inmate, legal_case, incidents = [], disciplinary = [], medical = [] } = data;
 
   const releaseInmate = async () => {
     if (!window.confirm('Release this inmate?')) return;

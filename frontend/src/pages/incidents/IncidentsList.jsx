@@ -3,25 +3,16 @@ import { Plus, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
 import { hasRole } from '../../services/authentication';
-import { getIncidents, getPrisons, getBlocks, getOfficers } from '../../data/mockData';
 
 export const IncidentsList = () => {
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const incidents = getIncidents();
-    const prisons = getPrisons();
-    const blocks = getBlocks();
-    const officers = getOfficers();
-    const enriched = incidents.map(inc => ({
-      ...inc,
-      prison_name: prisons.find(p => p.prison_id === inc.prison_id)?.name || '—',
-      block_name: blocks.find(b => b.block_id === inc.block_id)?.name || '—',
-      officer_name: officers.find(o => o.national_id === inc.reporting_officer)?.name || '—',
-    }));
-    setIncidents(enriched);
-    setLoading(false);
+    fetch('/api/incidents')
+      .then(r => r.json())
+      .then(data => { setIncidents(data); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Incident Reports...</div>;

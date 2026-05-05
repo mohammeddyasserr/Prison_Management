@@ -3,16 +3,25 @@ import { Shield, AlertTriangle, UserMinus, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { KPICard } from '../../components/dashboard/KPICard';
 import styles from './DashboardStyles.module.css';
-import { getDashboardData } from '../../data/mockData';
 
 export const OfficerDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const result = getDashboardData('officer');
-    setData(result);
-    setLoading(false);
+    const nationalId = localStorage.getItem('userNationalId');
+    Promise.all([
+      fetch(`/api/incidents/officer/${nationalId}`).then(r => r.json()).catch(() => []),
+      fetch(`/api/shift/officer/${nationalId}`).then(r => r.json()).catch(() => []),
+    ]).then(([incidents, shifts]) => {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const recent_incidents = incidents.filter(inc => new Date(inc.occurred_at) >= sevenDaysAgo);
+      const today = new Date().toISOString().split('T')[0];
+      const my_shifts = shifts.filter(s => s.date >= today);
+      setData({ recent_incidents, my_shifts, assigned_blocks: [], cells: [], active_solitary: [] });
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div className={styles.loading}>Connecting to secure network...</div>;

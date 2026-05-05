@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Trash2, Calendar } from 'lucide-react';
 import styles from '../EntityStyles.module.css';
-import { hasRole } from '../../services/authentication';
-import { postForm } from '../../services/authentication';
-import { getShifts, getOfficers, getBlocks, getPrisons } from '../../data/mockData';
+import { hasRole, postForm } from '../../services/authentication';
+import { useToast } from '../../context/ToastContext';
 
 export const ShiftsList = () => {
   const [data, setData] = useState({ shifts: [], officers: [], blocks: [] });
   const [loading, setLoading] = useState(true);
+  const toast = useToast();
   const [formData, setFormData] = useState({
     officer_id: '',
     block_id: '',
@@ -16,28 +16,18 @@ export const ShiftsList = () => {
   });
 
   useEffect(() => {
-    const shifts = getShifts();
-    const officers = getOfficers();
-    const blocks = getBlocks();
-    const prisons = getPrisons();
-
-    const enrichedShifts = shifts.map(s => {
-      const block = blocks.find(b => b.block_id === s.block_id);
-      const prison = block ? prisons.find(p => p.prison_id === block.prison_id) : null;
-      return {
-        ...s,
-        officer_name: officers.find(o => o.national_id === s.officer_id)?.name || '—',
-        block_name: block?.name || '—',
-        prison_name: prison?.name || '—',
-      };
-    });
-
-    setData({
-      shifts: enrichedShifts,
-      officers: officers,
-      blocks: blocks,
-    });
-    setLoading(false);
+    Promise.all([
+      fetch('/api/shift').then(r => r.json()),
+      fetch('/api/staff').then(r => r.json()),
+    ]).then(([shifts, officers]) => {
+      // Extract unique blocks from shifts for the dropdown
+      const blocksMap = {};
+      shifts.forEach(s => {
+        if (s.block_id) blocksMap[s.block_id] = { block_id: s.block_id, name: s.block_name || `Block ${s.block_id}` };
+      });
+      setData({ shifts, officers, blocks: Object.values(blocksMap) });
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Shift Schedule...</div>;
 
@@ -48,16 +38,39 @@ export const ShiftsList = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await postForm('/shifts/add', formData);
-    window.location.reload();
+    try {
+      const response = await postForm('/shifts/add', formData);
+      const newShift = await response.json();
+      
+      setData(prev => ({
+        ...prev,
+        shifts: [newShift, ...prev.shifts]
+      }));
+      
+      setFormData({
+        officer_id: '',
+        block_id: '',
+        shift_type: 'Morning',
+        date: '',
+      });
+      
+      toast.success('Shift Assigned', 'The shift has been successfully assigned to the officer.');
+    } catch (err) {
+      toast.error('Assignment Failed', 'There was an error assigning the shift. Please try again.');
+    }
   };
 
   const removeShift = async (shiftId) => {
-    await postForm(`/shifts/${shiftId}/delete`, {});
-    setData((current) => ({
-      ...current,
-      shifts: current.shifts.filter((shift) => shift.shift_id !== shiftId),
-    }));
+    try {
+      await postForm(`/shifts/${shiftId}/delete`, {});
+      setData((current) => ({
+        ...current,
+        shifts: current.shifts.filter((shift) => shift.shift_id !== shiftId),
+      }));
+      toast.success('Shift Removed', 'The shift assignment has been removed.');
+    } catch (err) {
+      toast.error('Removal Failed', 'Could not remove the shift assignment.');
+    }
   };
 
   return (
@@ -112,7 +125,7 @@ export const ShiftsList = () => {
                 <th>ID</th>
                 {!hasRole('officer') && <th>Officer</th>}
                 <th>Block</th>
-                {hasRole('super_admin') && <th>Prison</th>}
+                {hasRole('admin') && <th>Prison</th>}
                 <th>Shift</th>
                 <th>Date</th>
                 <th>Time</th>
@@ -125,7 +138,7 @@ export const ShiftsList = () => {
                   <td>{s.shift_id}</td>
                   {!hasRole('officer') && <td>{s.officer_name || '—'}</td>}
                   <td>{s.block_name}</td>
-                  {hasRole('super_admin') && <td>{s.prison_name || '—'}</td>}
+                  {hasRole('admin') && <td>{s.prison_name || '—'}</td>}
                   <td><span className={`${styles.badge} ${styles.badgeInfo}`}>{s.shift_type}</span></td>
                   <td>{s.date}</td>
                   <td>{s.start_time} — {s.end_time}</td>
@@ -138,7 +151,7 @@ export const ShiftsList = () => {
                   )}
                 </tr>
               )) : (
-                <tr><td colSpan={hasRole('prison_manager') ? '7' : hasRole('super_admin') ? '7' : '5'} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No shifts found.</td></tr>
+                <tr><td colSpan={hasRole('prison_manager') ? '7' : hasRole('admin') ? '7' : '5'} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No shifts found.</td></tr>
               )}
             </tbody>
           </table>

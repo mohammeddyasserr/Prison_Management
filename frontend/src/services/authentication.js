@@ -11,6 +11,14 @@ export const formatRoleLabel = (role = '') =>
 
 export const hasRole = (...roles) => roles.includes(getUserRole());
 
+export const logout = () => {
+  localStorage.removeItem('userRole');
+  localStorage.removeItem('userName');
+  localStorage.removeItem('userToken');
+  localStorage.removeItem('userNationalId');
+  window.location.href = '/login';
+};
+
 
 export const postForm = async (path, values) => {
   const body = new URLSearchParams();

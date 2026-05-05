@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './Login.module.css';
 import { postForm } from '../../services/authentication';
+import { useToast } from '../../context/ToastContext';
 
 export const Login = () => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
+  const toast = useToast();
   const [error, setError] = useState('');
 
   const handleLogin = async (e) => {
@@ -23,9 +25,13 @@ export const Login = () => {
 
       const data = await response.json();
 
-      // Store user info in localStorage
+      // Store user info in localStorage (matching authentication.js keys)
       localStorage.setItem('userRole', data.role);
-      localStorage.setItem('token', data.access_token);
+      localStorage.setItem('userToken', data.access_token);
+      localStorage.setItem('userNationalId', data.access_token); // access_token IS the national_id in this simplified setup
+      localStorage.setItem('userName', data.name || 'System User');
+
+      toast.success('Login Successful', `Welcome back, ${data.name || 'User'}`);
 
       // Navigate based on role
       if (data.role === 'admin') {

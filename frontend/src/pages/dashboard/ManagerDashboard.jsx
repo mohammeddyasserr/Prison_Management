@@ -2,65 +2,43 @@ import React, { useEffect, useState } from 'react';
 import { Users, AlertTriangle, Clock, Activity, ArrowRightLeft } from 'lucide-react';
 import { KPICard } from '../../components/dashboard/KPICard';
 import styles from './DashboardStyles.module.css';
-import { getDashboardData, getVisits, getInmates, getIncidents, getPrisons, getBlocks, getTransfers } from '../../data/mockData';
 
 export const ManagerDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const result = getDashboardData('manager');
-    const allVisits = getVisits();
-    const inmates = getInmates();
-    const incidents = getIncidents();
-    const prisons = getPrisons();
-    const transfers = getTransfers();
+    const nationalId = localStorage.getItem('userNationalId');
+    // First get the manager's prison
+    fetch(`/api/prison/user/${nationalId}`)
+      .then(r => r.json())
+      .then(async prison => {
+        const prison_id = prison.prison_id;
+        const [visits, incidents, transfers, blocksCells] = await Promise.all([
+          fetch('/api/visit').then(r => r.json()).catch(() => []),
+          fetch(`/api/incidents/prison/${prison_id}`).then(r => r.json()).catch(() => []),
+          fetch('/api/transfer').then(r => r.json()).catch(() => []),
+          fetch(`/api/prison/${prison_id}/blocks-cells`).then(r => r.json()).catch(() => []),
+        ]);
 
-    // Pending visits enriched
-    const pending_visits = allVisits
-      .filter(v => v.status === 'Pending' && v.prison_id === 2)
-      .map(v => ({
-        ...v,
-        inmate_name: inmates.find(i => i.national_id === v.inmate_national_id)?.full_name || '—',
-      }));
+        const today = new Date();
+        const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // Upcoming visits (Approved, future dates)
-    const today = new Date();
-    const upcoming_visits = allVisits
-      .filter(v => v.status === 'Approved' && v.prison_id === 2 && new Date(v.visit_date) >= today)
-      .map(v => ({
-        ...v,
-        inmate_name: inmates.find(i => i.national_id === v.inmate_national_id)?.full_name || '—',
-      }));
+        const pending_visits = visits.filter(v => v.status === 'Scheduled');
+        const upcoming_visits = visits.filter(v => v.status === 'Scheduled' && new Date(v.visit_date) >= today);
+        const recent_incidents = incidents.filter(inc => new Date(inc.occurred_at) >= thirtyDaysAgo);
+        const pending_transfers = transfers.filter(t => t.requesting_prison === prison_id && t.status === 'Pending');
 
-    // Recent incidents — last 30 days
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const recent_incidents = incidents
-      .filter(inc => inc.prison_id === 2 && new Date(inc.date_time) >= thirtyDaysAgo)
-      .map(inc => ({
-        ...inc,
-        block_name: getBlocks().find(b => b.block_id === inc.block_id)?.name || '—',
-      }));
+        // Format blocks for display
+        const blocks = blocksCells.map(b => ({
+          ...b,
+          occupancy_rate: b.total_cells > 0 ? Math.round((b.total_inmates / b.total_cells) * 100) : 0,
+        }));
 
-    // Pending transfers enriched
-    const pending_transfers = transfers
-      .filter(t => t.requesting_prison === 2 && t.status === 'Pending')
-      .map(t => ({
-        ...t,
-        inmate_name: inmates.find(i => i.inmate_id === t.inmate_id)?.full_name || '—',
-        dest_name: prisons.find(p => p.prison_id === t.destination_prison)?.name || '—',
-      }));
-
-    setData({
-      ...result,
-      pending_visits,
-      upcoming_visits,
-      recent_incidents,
-      pending_transfers,
-      active_incidents: { count: recent_incidents.length },
-    });
-    setLoading(false);
+        setData({ prison, blocks, pending_visits, upcoming_visits, recent_incidents, pending_transfers, upcoming_releases: [], active_incidents: { count: recent_incidents.length } });
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div className={styles.loading}>Connecting to secure network...</div>;

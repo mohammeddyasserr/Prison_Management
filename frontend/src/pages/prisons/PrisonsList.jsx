@@ -3,23 +3,16 @@ import { Plus, Eye, Edit } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
 import { hasRole } from '../../services/authentication';
-import { getPrisons, getOfficers } from '../../data/mockData';
 
 export const PrisonsList = () => {
   const [prisons, setPrisons] = useState([]);
   const [loading, setLoading] = useState(true);
 
-
-
   useEffect(() => {
-    const prisons = getPrisons();
-    const officers = getOfficers();
-    const enriched = prisons.map(p => ({
-      ...p,
-      manager_name: officers.find(o => o.national_id === p.manager_id)?.name || null
-    }));
-    setPrisons(enriched);
-    setLoading(false);
+    fetch('/api/prison')
+      .then(r => r.json())
+      .then(data => { setPrisons(data); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Prisons...</div>;
@@ -28,7 +21,7 @@ export const PrisonsList = () => {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>Prison Facilities</h1>
-        {hasRole('super_admin') && (
+        {hasRole('admin') && (
           <Link to="/prisons/add" className={`${styles.btn} ${styles.btnPrimary}`}>
             <Plus size={16} /> Add Prison
           </Link>
@@ -74,7 +67,7 @@ export const PrisonsList = () => {
                     <Link to={`/prisons/${prison.prison_id}`} className={`${styles.btn} ${styles.btnOutline}`}>
                       <Eye size={14} /> View
                     </Link>
-                    {hasRole('super_admin') && (
+                    {hasRole('admin') && (
                       <Link to={`/prisons/${prison.prison_id}/edit`} className={`${styles.btn} ${styles.btnPrimary}`}>
                         <Edit size={14} /> Edit
                       </Link>

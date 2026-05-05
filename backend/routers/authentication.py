@@ -20,7 +20,7 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: 
     if not verify_password(form_data.password, user["password_hash"]):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
 
-    return {"access_token": user["national_id"], "token_type": "bearer", "role": user["role"]}
+    return {"access_token": user["national_id"], "token_type": "bearer", "role": user["role"], "name": user["name"]}
 
 
 @router.post("/create_admin", status_code=status.HTTP_201_CREATED)

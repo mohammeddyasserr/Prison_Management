@@ -121,75 +121,44 @@ def get_prison_by_user(national_id: str, db: SessionDep):
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=schemas.PrisonResponse)
 def create_prison(request: schemas.PrisonCreate, db: SessionDep):
     result = db.execute(text("""
-        WITH new_prison AS (
-            INSERT INTO prison (
-                name, type, security_level, location, manager_id,
-                has_hospital, has_workshops, has_agricultural_ward, 
-                has_visitation_hall, visitation_hall_capacity
-            ) VALUES (
-                :name, :type, :security_level, :location, :manager_id,
-                :has_hospital, :has_workshops, :has_agricultural_ward, 
-                :has_visitation_hall, :visitation_hall_capacity
-            ) RETURNING *
+        INSERT INTO prison (
+            name, type, security_level, location, manager_id,
+            has_hospital, has_workshops, has_agricultural_ward, 
+            has_visitation_hall, visitation_hall_capacity
+        ) VALUES (
+            :name, :type, :security_level, :location, :manager_id,
+            :has_hospital, :has_workshops, :has_agricultural_ward, 
+            :has_visitation_hall, :visitation_hall_capacity
         )
-        SELECT 
-            np.*, 
-            o.name AS manager_name,
-            0 AS total_capacity,
-            0 AS current_occupancy
-        FROM new_prison np 
-        LEFT JOIN officer o ON np.manager_id = o.national_id
     """), request.model_dump())
-    
-    new_prison = result.fetchone()
     db.commit()
-    return new_prison
+    
+    # In SQLite, result.lastrowid gives the ID of the new row
+    new_id = result.lastrowid
+    return get_prison_by_id(new_id, db)
 
 @router.put("/{id}", status_code=status.HTTP_200_OK, response_model=schemas.PrisonResponse)
 def update_prison(id: int, request: schemas.PrisonCreate, db: SessionDep):
     result = db.execute(text("""
-        WITH updated_prison AS (
-            UPDATE prison SET
-                name = :name,
-                type = :type,
-                security_level = :security_level,
-                location = :location,
-                manager_id = :manager_id,
-                has_hospital = :has_hospital,
-                has_workshops = :has_workshops,
-                has_agricultural_ward = :has_agricultural_ward,
-                has_visitation_hall = :has_visitation_hall,
-                visitation_hall_capacity = :visitation_hall_capacity
-            WHERE prison_id = :id
-            RETURNING *
-        )
-        SELECT 
-            up.*, 
-            o.name AS manager_name,
-            (
-                SELECT COALESCE(SUM(c.capacity), 0)
-                FROM cell c
-                JOIN block b ON c.block_id = b.block_id
-                WHERE b.prison_id = up.prison_id
-            ) AS total_capacity,
-            (
-                SELECT COUNT(*)
-                FROM inmate i
-                JOIN cell c ON i.assigned_cell = c.cell_id
-                JOIN block b ON c.block_id = b.block_id
-                WHERE b.prison_id = up.prison_id
-            ) AS current_occupancy
-        FROM updated_prison up 
-        LEFT JOIN officer o ON up.manager_id = o.national_id
+        UPDATE prison SET
+            name = :name,
+            type = :type,
+            security_level = :security_level,
+            location = :location,
+            manager_id = :manager_id,
+            has_hospital = :has_hospital,
+            has_workshops = :has_workshops,
+            has_agricultural_ward = :has_agricultural_ward,
+            has_visitation_hall = :has_visitation_hall,
+            visitation_hall_capacity = :visitation_hall_capacity
+        WHERE prison_id = :id
     """), {"id": id, **request.model_dump()})
     
-    updated_prison = result.fetchone()
-    
-    if not updated_prison:
+    if result.rowcount == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prison with id {id} not found")
         
     db.commit()
-    return updated_prison
+    return get_prison_by_id(id, db)
 
 @router.get("/{id}/blocks-cells", status_code=status.HTTP_200_OK)
 def get_prison_blocks_and_cells(id: int, db: SessionDep):

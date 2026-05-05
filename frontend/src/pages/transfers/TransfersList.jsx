@@ -3,24 +3,16 @@ import { Plus, Check, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
 import { hasRole } from '../../services/authentication';
-import { getTransfers, getPrisons, getInmates } from '../../data/mockData';
 
 export const TransfersList = () => {
   const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const transfers = getTransfers();
-    const prisons = getPrisons();
-    const inmates = getInmates();
-    const enriched = transfers.map(t => ({
-      ...t,
-      inmate_name: inmates.find(i => i.inmate_id === t.inmate_id)?.full_name || '—',
-      from_prison: prisons.find(p => p.prison_id === t.requesting_prison)?.name || '—',
-      to_prison: prisons.find(p => p.prison_id === t.destination_prison)?.name || '—',
-    }));
-    setTransfers(enriched);
-    setLoading(false);
+    fetch('/api/transfer')
+      .then(r => r.json())
+      .then(data => { setTransfers(data); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Transfer Requests...</div>;
@@ -56,7 +48,7 @@ export const TransfersList = () => {
             <col style={{ width: '19%' }} />
             <col style={{ width: '10%' }} />
             <col style={{ width: '12%' }} />
-            {hasRole('super_admin') && <col style={{ width: '13%' }} />}
+            {hasRole('admin') && <col style={{ width: '13%' }} />}
           </colgroup>
           <thead>
             <tr>
@@ -67,7 +59,7 @@ export const TransfersList = () => {
               <th>Reason</th>
               <th>Status</th>
               <th>Date</th>
-              {hasRole('super_admin') && <th>Actions</th>}
+              {hasRole('admin') && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -89,7 +81,7 @@ export const TransfersList = () => {
                 <td style={{ verticalAlign: 'middle', fontSize: '0.8rem', color: 'var(--text-secondary)', wordBreak: 'break-word' }}>
                   {t.approval_date || '—'}
                 </td>
-                {hasRole('super_admin') && (
+                {hasRole('admin') && (
                   <td style={{ verticalAlign: 'middle' }}>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                       {t.status === 'Pending' ? (
@@ -119,7 +111,7 @@ export const TransfersList = () => {
             )) : (
               <tr>
                 <td
-                  colSpan={hasRole('super_admin') ? '8' : '7'}
+                  colSpan={hasRole('admin') ? '8' : '7'}
                   style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}
                 >
                   No transfer requests found.

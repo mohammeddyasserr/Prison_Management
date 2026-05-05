@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
 import { postForm } from '../../services/authentication';
-import { getPrisons } from '../../data/mockData';
+import { useToast } from '../../context/ToastContext';
 
 export const InmateForm = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [formData, setFormData] = useState({
     full_name: '',
     national_id: '',
@@ -26,8 +27,10 @@ export const InmateForm = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setPrisons(getPrisons());
-    setLoading(false);
+    fetch('/api/prison')
+      .then(r => r.json())
+      .then(data => { setPrisons(data); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
 
   const handleChange = (e) => {
@@ -37,8 +40,13 @@ export const InmateForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await postForm('/inmates/add', formData);
-    navigate('/inmates');
+    try {
+      await postForm('/inmates/add', formData);
+      toast.success('Inmate Admitted', `${formData.full_name} has been successfully added to the system.`);
+      navigate('/inmates');
+    } catch (err) {
+      toast.error('Admission Failed', 'There was an error admitting the inmate. Please check all required fields.');
+    }
   };
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;

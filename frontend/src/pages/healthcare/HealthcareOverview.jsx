@@ -3,31 +3,19 @@ import { Plus, Activity, HeartPulse } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
 import { hasRole } from '../../services/authentication';
-import { getDoctors, getMedicalVisits, getInmates, getPrisons } from '../../data/mockData';
 
 export const HealthcareOverview = () => {
   const [data, setData] = useState({ doctors: [], visits: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const doctors = getDoctors();
-    const visits = getMedicalVisits();
-    const inmates = getInmates();
-    const prisons = getPrisons();
-
-    const enrichedDoctors = doctors.map(d => ({
-      ...d,
-      prison_name: prisons.find(p => p.prison_id === d.prison_id)?.name || '—',
-    }));
-
-    const enrichedVisits = visits.map(v => ({
-      ...v,
-      inmate_name: inmates.find(i => i.inmate_id === v.inmate_id)?.full_name || '—',
-      doctor_name: doctors.find(d => d.national_id === v.doctor_id)?.name || '—',
-    }));
-
-    setData({ doctors: enrichedDoctors, visits: enrichedVisits });
-    setLoading(false);
+    Promise.all([
+      fetch('/api/doctor').then(r => r.json()),
+      fetch('/api/medical_visit').then(r => r.json()),
+    ]).then(([doctors, visits]) => {
+      setData({ doctors, visits });
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Healthcare Records...</div>;
@@ -37,7 +25,7 @@ export const HealthcareOverview = () => {
       <div className={styles.header}>
         <h1 className={styles.title}>Healthcare</h1>
         <div className={styles.actions}>
-          {hasRole('super_admin', 'prison_manager') && (
+          {hasRole('admin', 'prison_manager') && (
             <>
               <Link to="/healthcare/doctors/add" className={`${styles.btn} ${styles.btnPrimary}`}>
                 <Plus size={16} /> Add Doctor

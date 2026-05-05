@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Users, Building, AlertTriangle, Clock, Activity } from 'lucide-react';
 import { KPICard } from '../../components/dashboard/KPICard';
-import { getDashboardData } from '../../data/mockData';
 import styles from './DashboardStyles.module.css';
 
 export const SuperAdminDashboard = () => {
@@ -9,17 +8,25 @@ export const SuperAdminDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const result = getDashboardData('super_admin'); // ← CHANGED
-        setData(result);
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    Promise.all([
+      fetch('/api/prison').then(r => r.json()),
+      fetch('/api/transfer').then(r => r.json()),
+      fetch('/api/incidents').then(r => r.json()),
+      fetch('/api/inmates').then(r => r.json()),
+    ]).then(([prisons, transfers, incidents, inmates]) => {
+      const alerts = prisons.filter(p => p.total_capacity > 0 && (p.current_occupancy / p.total_capacity) > 0.9)
+        .map(p => ({ ...p, rate: Math.round((p.current_occupancy / p.total_capacity) * 100) }));
+      const high_risk = inmates
+        .map(i => ({ ...i, incident_count: incidents.filter(inc => inc.involved_inmate_ids?.includes(String(i.inmate_id))).length }))
+        .filter(i => i.incident_count >= 2)
+        .sort((a, b) => b.incident_count - a.incident_count);
+      const transfer_stats = {
+        pending: transfers.filter(t => t.status === 'Pending').length,
+        approved: transfers.filter(t => t.status === 'Approved').length,
+      };
+      setData({ prisons, alerts, high_risk, transfer_stats });
+      setLoading(false);
+    }).catch(err => { console.error(err); setLoading(false); });
   }, []);
 
 

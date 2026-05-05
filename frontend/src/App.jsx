@@ -28,6 +28,7 @@ import { MedicalVisitForm } from './pages/healthcare/MedicalVisitForm';
 import { DoctorForm } from './pages/healthcare/DoctorForm';
 import { ShiftsList } from './pages/shifts/ShiftsList';
 import { MLPredictions } from './pages/ml/MLPredictions';
+import { ToastProvider } from './context/ToastContext';
 
 const DashboardRedirect = () => {
   const role = localStorage.getItem('userRole');
@@ -40,41 +41,43 @@ const DashboardRedirect = () => {
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/visit-request" element={<PublicVisitRequest />} />
-        <Route path="/" element={<AppLayout />}>
-          <Route index element={<DashboardRedirect />} />
-          <Route path="dashboard/superadmin" element={<SuperAdminDashboard />} />
-          <Route path="dashboard/manager" element={<ManagerDashboard />} />
-          <Route path="dashboard/officer" element={<OfficerDashboard />} />
-          
-          <Route path="prisons" element={<PrisonsList />} />
-          <Route path="prisons/add" element={<PrisonForm />} />
-          <Route path="prisons/:id" element={<PrisonDetail />} />
-          <Route path="prisons/:id/edit" element={<PrisonForm />} />
-          <Route path="inmates" element={<InmatesList />} />
-          <Route path="inmates/add" element={<InmateForm />} />
-          <Route path="inmates/:id" element={<InmateDetail />} />
-          <Route path="inmates/:id/assign" element={<InmateAssignForm />} />
-          <Route path="officers" element={<OfficersList />} />
-          <Route path="officers/add" element={<OfficerForm />} />
-          <Route path="transfers" element={<TransfersList />} />
-          <Route path="transfers/add" element={<TransferForm />} />
-          <Route path="visits" element={<VisitsList />} />
-          <Route path="visits/slots" element={<VisitSlots />} />
-          <Route path="incidents" element={<IncidentsList />} />
-          <Route path="incidents/:id" element={<IncidentDetail />} />
-          <Route path="disciplinary" element={<DisciplinaryList />} />
-          <Route path="disciplinary/add" element={<DisciplinaryForm />} />
-          <Route path="healthcare" element={<HealthcareOverview />} />
-          <Route path="healthcare/visits/add" element={<MedicalVisitForm />} />
-          <Route path="healthcare/doctors/add" element={<DoctorForm />} />
-          <Route path="shifts" element={<ShiftsList />} />
-          <Route path="ml" element={<MLPredictions />} />
+      <ToastProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/visit-request" element={<PublicVisitRequest />} />
+          <Route path="/" element={<AppLayout />}>
+            <Route index element={<DashboardRedirect />} />
+            <Route path="dashboard/superadmin" element={<SuperAdminDashboard />} />
+            <Route path="dashboard/manager" element={<ManagerDashboard />} />
+            <Route path="dashboard/officer" element={<OfficerDashboard />} />
+            
+            <Route path="prisons" element={<PrisonsList />} />
+            <Route path="prisons/add" element={<PrisonForm />} />
+            <Route path="prisons/:id" element={<PrisonDetail />} />
+            <Route path="prisons/:id/edit" element={<PrisonForm />} />
+            <Route path="inmates" element={<InmatesList />} />
+            <Route path="inmates/add" element={<InmateForm />} />
+            <Route path="inmates/:id" element={<InmateDetail />} />
+            <Route path="inmates/:id/assign" element={<InmateAssignForm />} />
+            <Route path="officers" element={<OfficersList />} />
+            <Route path="officers/add" element={<OfficerForm />} />
+            <Route path="transfers" element={<TransfersList />} />
+            <Route path="transfers/add" element={<TransferForm />} />
+            <Route path="visits" element={<VisitsList />} />
+            <Route path="visits/slots" element={<VisitSlots />} />
+            <Route path="incidents" element={<IncidentsList />} />
+            <Route path="incidents/:id" element={<IncidentDetail />} />
+            <Route path="disciplinary" element={<DisciplinaryList />} />
+            <Route path="disciplinary/add" element={<DisciplinaryForm />} />
+            <Route path="healthcare" element={<HealthcareOverview />} />
+            <Route path="healthcare/visits/add" element={<MedicalVisitForm />} />
+            <Route path="healthcare/doctors/add" element={<DoctorForm />} />
+            <Route path="shifts" element={<ShiftsList />} />
+            <Route path="ml" element={<MLPredictions />} />
 
-        </Route>
-      </Routes>
+          </Route>
+        </Routes>
+      </ToastProvider>
     </BrowserRouter>
 
   );

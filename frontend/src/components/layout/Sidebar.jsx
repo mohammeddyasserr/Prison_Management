@@ -1,10 +1,10 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import styles from './Sidebar.module.css';
-import { formatRoleLabel, getUserName, getUserRole } from '../../services/authentication';
+import { formatRoleLabel, getUserName, getUserRole, logout } from '../../services/authentication';
 
 const navItemsByRole = {
-  super_admin: [
+  admin: [
     {
       section: 'Main',
       items: [{ name: 'Dashboard', icon: '📊', path: '/dashboard/superadmin' }],
@@ -79,8 +79,8 @@ const navItemsByRole = {
 };
 
 export const Sidebar = () => {
-  const role = getUserRole() || 'super_admin';
-  const navItems = navItemsByRole[role] || navItemsByRole.super_admin;
+  const role = getUserRole() || 'admin';
+  const navItems = navItemsByRole[role] || navItemsByRole.admin;
   const roleLabel = formatRoleLabel(role);
 
   return (
@@ -115,15 +115,7 @@ export const Sidebar = () => {
         <button
           type="button"
           className={styles.logoutLink}
-          onClick={async () => {
-            try {
-              await fetch('/api/logout', { method: 'POST' });
-            } finally {
-              localStorage.removeItem('userRole');
-              localStorage.removeItem('userName');
-              window.location.href = '/login';
-            }
-          }}
+          onClick={logout}
         >
           ↩ Logout
         </button>

@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
 import { postForm } from '../../services/authentication';
-import { getBlocks, getInmates, getOfficers } from '../../data/mockData';
-
+import { useToast } from '../../context/ToastContext';
 
 export const IncidentForm = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [formData, setFormData] = useState({
     type: '',
     date_time: '',
@@ -22,12 +22,17 @@ export const IncidentForm = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setData({
-      blocks: getBlocks(),
-      inmates: getInmates().filter(i => i.status === 'active'),
-      staff: getOfficers(),
-    });
-    setLoading(false);
+    Promise.all([
+      fetch('/api/inmates').then(r => r.json()),
+      fetch('/api/staff').then(r => r.json()),
+      fetch('/api/prison').then(r => r.json())
+        .then(prisons => Promise.all(
+          prisons.map(p => fetch(`/api/prison/${p.prison_id}/blocks-cells`).then(r => r.json()))
+        )).then(all => all.flat()),
+    ]).then(([inmates, staff, blocks]) => {
+      setData({ blocks, inmates, staff });
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   const handleChange = (e) => {
@@ -49,8 +54,13 @@ export const IncidentForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await postForm('/incidents/add', formData);
-    navigate('/incidents');
+    try {
+      await postForm('/incidents/add', formData);
+      toast.success('Incident Reported', 'The incident report has been successfully filed.');
+      navigate('/incidents');
+    } catch (err) {
+      toast.error('Reporting Failed', 'There was an error filing the incident report. Please check required fields.');
+    }
   };
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;

@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
 import { postForm } from '../../services/authentication';
-import { getInmates, getPrisons } from '../../data/mockData';
-
+import { useToast } from '../../context/ToastContext';
 
 export const TransferForm = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [formData, setFormData] = useState({
     inmate_id: '',
     destination_prison: '',
@@ -16,11 +16,13 @@ export const TransferForm = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setData({
-      inmates: getInmates().filter(i => i.status === 'active'),
-      prisons: getPrisons(),
-    });
-    setLoading(false);
+    Promise.all([
+      fetch('/api/inmates').then(r => r.json()),
+      fetch('/api/prison').then(r => r.json()),
+    ]).then(([inmates, prisons]) => {
+      setData({ inmates, prisons });
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   const handleChange = (e) => {
@@ -30,8 +32,13 @@ export const TransferForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await postForm('/transfers/add', formData);
-    navigate('/transfers');
+    try {
+      await postForm('/transfers/add', formData);
+      toast.success('Request Submitted', 'The inter-prison transfer request has been submitted for review.');
+      navigate('/transfers');
+    } catch (err) {
+      toast.error('Submission Failed', 'There was an error submitting the transfer request. Please try again.');
+    }
   };
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
