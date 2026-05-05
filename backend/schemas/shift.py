@@ -16,6 +16,5 @@ class ShiftResponse(SQLModel):
     block_id: int
     date: date
     officer_name: str | None = None
-    block_name: str | None = None
     prison_name: str | None = None
     time_range: str | None = None

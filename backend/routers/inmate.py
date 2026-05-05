@@ -13,6 +13,14 @@ def get_all(db: SessionDep):
     inmates = db.execute(text("""
         SELECT 
             i.*,
+            CASE 
+                WHEN i.status = 'Active' AND date('now') > date(i.start_date, 
+                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') 
+                THEN 'To be released'
+                ELSE i.status 
+            END as status,
             p.name as prison_name,
             date(i.start_date, 
                  '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
@@ -33,6 +41,14 @@ def get_inmate(inmate_id: int, db: SessionDep):
     result = db.execute(text("""
         SELECT 
             i.*,
+            CASE 
+                WHEN i.status = 'Active' AND date('now') > date(i.start_date, 
+                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') 
+                THEN 'To be released'
+                ELSE i.status 
+            END as status,
             p.name as prison_name,
             date(i.start_date, 
                  '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
@@ -52,6 +68,38 @@ def get_inmate(inmate_id: int, db: SessionDep):
 
     return dict(result._mapping)
 
+@router.get("/national_id/{national_id}", response_model=schemas.InmateResponse, status_code=status.HTTP_200_OK)
+def get_inmate_by_national_id(national_id: str, db: SessionDep):
+    result = db.execute(text("""
+        SELECT 
+            i.*,
+            CASE 
+                WHEN i.status = 'Active' AND date('now') > date(i.start_date, 
+                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') 
+                THEN 'To be released'
+                ELSE i.status 
+            END as status,
+            p.name as prison_name,
+            date(i.start_date, 
+                 '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
+                 '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
+                 '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
+        FROM inmate i
+        LEFT JOIN cell c ON i.assigned_cell = c.cell_id
+        LEFT JOIN block b ON c.block_id = b.block_id
+        LEFT JOIN prison p ON b.prison_id = p.prison_id
+        LEFT JOIN legal_case lc ON i.inmate_id = lc.inmate_id
+        WHERE i.national_id = :national_id
+        GROUP BY i.inmate_id
+    """), {"national_id": national_id}).fetchone()
+
+    if not result:
+        raise HTTPException(status_code=404, detail="Inmate not found")
+
+    return dict(result._mapping)
+
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=schemas.InmateResponse)
 def create_inmate(request: schemas.InmateCreate, db: SessionDep):
     inmate_data = request.model_dump()
@@ -59,10 +107,10 @@ def create_inmate(request: schemas.InmateCreate, db: SessionDep):
     result = db.execute(text("""
         INSERT INTO inmate (
             national_id, full_name, date_of_birth, gender, nationality, 
-            occupation, start_date, education_level, assigned_cell
+            occupation, start_date, education_level, assigned_cell, assigned_prison, status
         ) VALUES (
             :national_id, :full_name, :date_of_birth, :gender, :nationality, 
-            :occupation, :start_date, :education_level, :assigned_cell
+            :occupation, :start_date, :education_level, :assigned_cell, :assigned_prison, :status
         ) RETURNING *
     """), inmate_data)
     
@@ -73,6 +121,14 @@ def create_inmate(request: schemas.InmateCreate, db: SessionDep):
     new_inmate_result = db.execute(text("""
         SELECT 
             i.*,
+            CASE 
+                WHEN i.status = 'Active' AND date('now') > date(i.start_date, 
+                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') 
+                THEN 'To be released'
+                ELSE i.status 
+            END as status,
             p.name as prison_name,
             date(i.start_date, 
                  '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
@@ -97,6 +153,14 @@ def release_inmate(inmate_id: int, db: SessionDep):
     result = db.execute(text("""
         SELECT 
             i.*,
+            CASE 
+                WHEN i.status = 'Active' AND date('now') > date(i.start_date, 
+                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') 
+                THEN 'To be released'
+                ELSE i.status 
+            END as status,
             p.name as prison_name,
             date(i.start_date, 
                  '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
@@ -128,6 +192,14 @@ def get_inmates_by_prison(prison_id: int, db: SessionDep):
     inmates = db.execute(text("""
         SELECT 
             i.*,
+            CASE 
+                WHEN i.status = 'Active' AND date('now') > date(i.start_date, 
+                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') 
+                THEN 'To be released'
+                ELSE i.status 
+            END as status,
             p.name as prison_name,
             date(i.start_date, 
                  '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
@@ -149,6 +221,14 @@ def get_inmates_by_incident(incident_id: int, db: SessionDep):
     inmates = db.execute(text("""
         SELECT 
             i.*,
+            CASE 
+                WHEN i.status = 'Active' AND date('now') > date(i.start_date, 
+                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') 
+                THEN 'To be released'
+                ELSE i.status 
+            END as status,
             p.name as prison_name,
             date(i.start_date, 
                  '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 

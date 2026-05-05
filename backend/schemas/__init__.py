@@ -10,6 +10,7 @@ from .staff import StaffResponse, StaffCreate
 from .inmate import InmateCreate , InmateResponse
 from .legal_case import LegalCaseCreate, LegalCaseResponse
 from .shift import ShiftCreate, ShiftResponse
+from .pending_inmate import PendingInmateCreate, PendingInmateResponse
 from .doctor import DoctorResponse, DoctorCreate
 from .medical_visit import MedicalVisitResponse, MedicalVisitCreate
 from .visit import VisitCreate, VisitUpdate, VisitResponse

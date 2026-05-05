@@ -12,6 +12,7 @@ from routers import transfer
 from routers import inmate
 from routers import legal_case
 from routers import shift
+from routers import pending_inmate
 from routers import doctor
 from routers import medical_visit
 from routers import authentication
@@ -38,6 +39,7 @@ app.include_router(staff.router)
 app.include_router(inmate.router)
 app.include_router(legal_case.router)
 app.include_router(shift.router)
+app.include_router(pending_inmate.router)
 app.include_router(doctor.router)
 app.include_router(medical_visit.router)
 app.include_router(visit.router)

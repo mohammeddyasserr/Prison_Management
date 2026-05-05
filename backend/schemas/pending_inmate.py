@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel
 from datetime import date
 
-class InmateCreate(SQLModel):
+class PendingInmateCreate(SQLModel):
     national_id: str
     full_name: str
     date_of_birth: date
@@ -10,12 +10,10 @@ class InmateCreate(SQLModel):
     occupation: str | None = None
     start_date: date
     education_level: str
-    assigned_cell: int | None = None
     assigned_prison: int | None = None
-    status: str = "Active"
 
-class InmateResponse(SQLModel):
-    inmate_id: int
+class PendingInmateResponse(SQLModel):
+    pending_inmate_id: int
     national_id: str
     full_name: str
     date_of_birth: date
@@ -24,8 +22,5 @@ class InmateResponse(SQLModel):
     occupation: str | None = None
     start_date: date
     education_level: str
-    assigned_cell: int | None = None
     assigned_prison: int | None = None
-    status: str
     prison_name: str | None = None
-    release_date: date | None = None
