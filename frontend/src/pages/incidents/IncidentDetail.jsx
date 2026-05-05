@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { AlertTriangle, Info, User, Shield, ArrowLeft } from 'lucide-react';
 import styles from '../EntityStyles.module.css';
-import { getIncidentDetail, getDisciplinaryLogs, getInmates, getOfficers } from '../../data/mockData';
 
 export const IncidentDetail = () => {
   const { id } = useParams();
@@ -10,28 +9,22 @@ export const IncidentDetail = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const result = getIncidentDetail(id);
-    if (!result) { setLoading(false); return; }
-
-    const allInmates = getInmates();
-    const allOfficers = getOfficers();
-    const disciplinary = getDisciplinaryLogs().filter(dl => dl.incident_id === parseInt(id));
-    const involved_inmates = disciplinary
-      .map(dl => allInmates.find(i => i.inmate_id === dl.inmate_id))
-      .filter(Boolean);
-    const involved_staff = allOfficers.filter(o => o.national_id === result.incident.reporting_officer);
-    const enrichedDisciplinary = disciplinary.map(dl => ({
-      ...dl,
-      inmate_name: allInmates.find(i => i.inmate_id === dl.inmate_id)?.full_name || '—',
-      imposed_by_name: allOfficers.find(o => o.national_id === dl.imposed_by)?.name || '—',
-    }));
-
-    setData({ ...result, involved_inmates, involved_staff, disciplinary: enrichedDisciplinary });
-    setLoading(false);
+    fetch(`/api/incidents/${id}`)
+      .then(r => r.json())
+      .then(incident => {
+        setData({
+          incident,
+          involved_inmates: incident.involved_inmates || [],
+          involved_staff: incident.involved_staff || [],
+          disciplinary: incident.disciplinary || [],
+        });
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, [id]);
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Incident Report...</div>;
-  if (!data || data.error) return <div style={{ padding: '40px', textAlign: 'center' }}>Incident not found.</div>;
+  if (!data || !data.incident) return <div style={{ padding: '40px', textAlign: 'center' }}>Incident not found.</div>;
 
   const { incident, involved_inmates, involved_staff, disciplinary } = data;
 

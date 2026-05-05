@@ -2,23 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { Check, X, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { hasRole } from '../../lib/auth';
-import { postForm } from '../../lib/http';
-import { getVisits, getInmates } from '../../data/mockData';
+import { hasRole } from '../../services/authentication';
+import { postForm } from '../../services/authentication';
 
 export const VisitsList = () => {
   const [visits, setVisits] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const visits = getVisits();
-    const inmates = getInmates();
-    const enriched = visits.map(v => ({
-      ...v,
-      inmate_name: inmates.find(i => i.national_id === v.inmate_national_id)?.full_name || '—',
-    }));
-    setVisits(enriched);
-    setLoading(false);
+    fetch('/api/visit')
+      .then(r => r.json())
+      .then(data => { setVisits(data); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Visit Requests...</div>;

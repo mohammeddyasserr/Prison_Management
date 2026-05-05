@@ -2,10 +2,11 @@ import React from 'react';
 import { Search, Bell, Menu, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import styles from './TopNavbar.module.css';
+import { logout } from '../../services/authentication';
 
 export const TopNavbar = () => {
   const navigate = useNavigate();
-  const role = localStorage.getItem('userRole') || 'super_admin';
+  const role = localStorage.getItem('userRole') || 'admin';
   const userName = localStorage.getItem('userName') || 'Admin User';
   const roleLabel = role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   const initials = userName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
@@ -37,10 +38,7 @@ export const TopNavbar = () => {
 
         <button 
           className={styles.iconButton} 
-          onClick={() => {
-            localStorage.removeItem('userRole');
-            navigate('/login');
-          }}
+          onClick={logout}
           title="Logout"
           style={{marginLeft: '10px', color: 'var(--color-danger)'}}
         >

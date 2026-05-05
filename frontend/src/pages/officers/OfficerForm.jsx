@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { postForm } from '../../lib/http';
-import { getPrisons } from '../../data/mockData';
+import { postForm } from '../../services/authentication';
+import { useToast } from '../../context/ToastContext';
 
 export const OfficerForm = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [formData, setFormData] = useState({
     national_id: '',
     name: '',
@@ -20,8 +21,10 @@ export const OfficerForm = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setPrisons(getPrisons());
-    setLoading(false);
+    fetch('/api/prison')
+      .then(r => r.json())
+      .then(data => { setPrisons(data); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
 
   const handleChange = (e) => {
@@ -31,8 +34,13 @@ export const OfficerForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await postForm('/officers/add', formData);
-    navigate('/officers');
+    try {
+      await postForm('/staff', formData);
+      toast.success('Account Created', `Staff account for ${formData.name} has been successfully created.`);
+      navigate('/staff');
+    } catch (err) {
+      toast.error('Creation Failed', 'There was an error creating the staff account. Please try again.');
+    }
   };
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
@@ -41,7 +49,7 @@ export const OfficerForm = () => {
     <div className={styles.container}>
       <h1 className={styles.title}>Add Staff Member</h1>
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '700px' }}>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '100%' }}>
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
             <div>

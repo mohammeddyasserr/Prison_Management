@@ -2,56 +2,55 @@ import React, { useEffect, useState } from 'react';
 import { Eye, TrendingUp, ShieldAlert, RotateCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { getInmates, getPrisons, getDisciplinaryLogs, getTransfers } from '../../data/mockData';
 
 export const MLPredictions = () => {
   const [data, setData] = useState({ risk_scores: [], overcrowding: [], recidivism_scores: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const inmates = getInmates().filter(i => i.status === 'active');
-    const prisons = getPrisons();
-    const disciplinary = getDisciplinaryLogs();
-    const transfers = getTransfers();
+    Promise.all([
+      fetch('/api/inmates').then(r => r.json()),
+      fetch('/api/prison').then(r => r.json()),
+      fetch('/api/disciplinary').then(r => r.json()),
+      fetch('/api/transfer').then(r => r.json()),
+    ]).then(([allInmates, prisons, disciplinary, transfers]) => {
+      const inmates = allInmates.filter(i => i.status === 'active');
 
-    // Risk scores — based on disciplinary incident count
-    const risk_scores = inmates.map(inmate => {
-      const incidentCount = disciplinary.filter(dl => dl.inmate_id === inmate.inmate_id).length;
-      const score = Math.min(100, incidentCount * 20);
-      const level = score >= 80 ? 'Critical' : score >= 60 ? 'High' : score >= 40 ? 'Medium' : 'Low';
-      return { inmate_id: inmate.inmate_id, name: inmate.full_name, score, level };
-    }).sort((a, b) => b.score - a.score);
+      // Risk scores — based on disciplinary incident count
+      const risk_scores = inmates.map(inmate => {
+        const incidentCount = disciplinary.filter(dl => dl.inmate_id === inmate.inmate_id).length;
+        const score = Math.min(100, incidentCount * 20);
+        const level = score >= 80 ? 'Critical' : score >= 60 ? 'High' : score >= 40 ? 'Medium' : 'Low';
+        return { inmate_id: inmate.inmate_id, name: inmate.full_name, score, level };
+      }).sort((a, b) => b.score - a.score);
 
-    // Overcrowding forecast — simple linear projection
-    const overcrowding = prisons.map(prison => {
-      const current_rate = Math.round((prison.current_occupancy / prison.total_capacity) * 100);
-      const pendingIn = transfers.filter(t => t.destination_prison === prison.prison_id && t.status === 'Pending').length;
-      const releases_30 = inmates.filter(i => {
-        if (!i.expected_release_date || i.assigned_prison !== prison.prison_id) return false;
-        const releaseDate = new Date(i.expected_release_date);
-        const now = new Date();
-        const diff = (releaseDate - now) / (1000 * 60 * 60 * 24);
-        return diff <= 30 && diff >= 0;
-      }).length;
-      const forecast_30 = Math.min(100, Math.round(current_rate + (pendingIn * 2) - (releases_30 * 2)));
-      const forecast_60 = Math.min(100, Math.round(forecast_30 + (pendingIn * 1.5)));
-      const forecast_90 = Math.min(100, Math.round(forecast_60 + (pendingIn * 1)));
-      return { name: prison.name, current_rate, forecast_30, forecast_60, forecast_90, releases_30, pending_transfers_in: pendingIn };
-    });
+      // Overcrowding forecast — simple linear projection
+      const overcrowding = prisons.map(prison => {
+        const current_rate = Math.round((prison.current_occupancy / prison.total_capacity) * 100);
+        const pendingIn = transfers.filter(t => t.destination_prison === prison.prison_id && t.status === 'Pending').length;
+        const releases_30 = inmates.filter(i => {
+          if (!i.expected_release_date || i.assigned_prison !== prison.prison_id) return false;
+          const diff = (new Date(i.expected_release_date) - new Date()) / (1000 * 60 * 60 * 24);
+          return diff <= 30 && diff >= 0;
+        }).length;
+        const forecast_30 = Math.min(100, Math.round(current_rate + (pendingIn * 2) - (releases_30 * 2)));
+        const forecast_60 = Math.min(100, Math.round(forecast_30 + (pendingIn * 1.5)));
+        const forecast_90 = Math.min(100, Math.round(forecast_60 + (pendingIn * 1)));
+        return { name: prison.name, current_rate, forecast_30, forecast_60, forecast_90, releases_30, pending_transfers_in: pendingIn };
+      });
 
-    // Recidivism scores — based on disciplinary count + sentence length
-    const recidivism_scores = inmates.map(inmate => {
-      const discCount = disciplinary.filter(dl => dl.inmate_id === inmate.inmate_id).length;
-      const age = inmate.date_of_birth
-        ? new Date().getFullYear() - new Date(inmate.date_of_birth).getFullYear()
-        : 30;
-      const ageFactor = age < 25 ? 20 : age < 35 ? 10 : 0;
-      const score = Math.min(100, discCount * 25 + ageFactor);
-      return { inmate_id: inmate.inmate_id, name: inmate.full_name, score };
-    }).sort((a, b) => b.score - a.score);
+      // Recidivism scores
+      const recidivism_scores = inmates.map(inmate => {
+        const discCount = disciplinary.filter(dl => dl.inmate_id === inmate.inmate_id).length;
+        const age = inmate.date_of_birth ? new Date().getFullYear() - new Date(inmate.date_of_birth).getFullYear() : 30;
+        const ageFactor = age < 25 ? 20 : age < 35 ? 10 : 0;
+        const score = Math.min(100, discCount * 25 + ageFactor);
+        return { inmate_id: inmate.inmate_id, name: inmate.full_name, score };
+      }).sort((a, b) => b.score - a.score);
 
-    setData({ risk_scores, overcrowding, recidivism_scores });
-    setLoading(false);
+      setData({ risk_scores, overcrowding, recidivism_scores });
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading ML Predictions...</div>;

@@ -2,22 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { Plus, Eye, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { hasRole } from '../../lib/auth';
-import { getInmates, getPrisons } from '../../data/mockData';
+import { hasRole } from '../../services/authentication';
 
 export const InmatesList = () => {
   const [inmates, setInmates] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const inmates = getInmates();
-    const prisons = getPrisons();
-    const enriched = inmates.map(i => ({
-      ...i,
-      prison_name: prisons.find(p => p.prison_id === i.assigned_prison)?.name || null
-    }));
-    setInmates(enriched);
-    setLoading(false);
+    fetch('/api/inmates')
+      .then(r => r.json())
+      .then(data => { setInmates(data); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Inmate Records...</div>;
@@ -26,7 +21,7 @@ export const InmatesList = () => {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>Inmate Records</h1>
-        {hasRole('super_admin') && (
+        {hasRole('admin') && (
           <Link to="/inmates/add" className={`${styles.btn} ${styles.btnPrimary}`}>
             <Plus size={16} /> Admit New Inmate
           </Link>

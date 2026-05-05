@@ -9,18 +9,19 @@ export const OfficerDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/dashboard/officer');
-        const result = await response.json();
-        setData(result);
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    const nationalId = localStorage.getItem('userNationalId');
+    Promise.all([
+      fetch(`/api/incidents/officer/${nationalId}`).then(r => r.json()).catch(() => []),
+      fetch(`/api/shift/officer/${nationalId}`).then(r => r.json()).catch(() => []),
+    ]).then(([incidents, shifts]) => {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const recent_incidents = incidents.filter(inc => new Date(inc.occurred_at) >= sevenDaysAgo);
+      const today = new Date().toISOString().split('T')[0];
+      const my_shifts = shifts.filter(s => s.date >= today);
+      setData({ recent_incidents, my_shifts, assigned_blocks: [], cells: [], active_solitary: [] });
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div className={styles.loading}>Connecting to secure network...</div>;
@@ -73,9 +74,7 @@ export const OfficerDashboard = () => {
               </tbody>
             </table>
           </div>
-        ) : (
-          <p className={styles.emptyState}>No cells assigned to your blocks.</p>
-        )}
+        ) : <p className={styles.emptyState}>No cells assigned to your blocks.</p>}
       </div>
 
       <div className={styles.panelsRow}>
@@ -100,9 +99,7 @@ export const OfficerDashboard = () => {
                 </tbody>
               </table>
             </div>
-          ) : (
-            <p className={styles.emptyState}>No recent incidents.</p>
-          )}
+          ) : <p className={styles.emptyState}>No recent incidents.</p>}
         </div>
 
         <div className={styles.panel}>
@@ -121,9 +118,7 @@ export const OfficerDashboard = () => {
                 </tbody>
               </table>
             </div>
-          ) : (
-            <p className={styles.emptyState}>No active solitary confinement orders.</p>
-          )}
+          ) : <p className={styles.emptyState}>No active solitary confinement orders.</p>}
         </div>
       </div>
 
@@ -145,9 +140,7 @@ export const OfficerDashboard = () => {
               </tbody>
             </table>
           </div>
-        ) : (
-          <p className={styles.emptyState}>No upcoming shifts assigned.</p>
-        )}
+        ) : <p className={styles.emptyState}>No upcoming shifts assigned.</p>}
       </div>
     </div>
   );

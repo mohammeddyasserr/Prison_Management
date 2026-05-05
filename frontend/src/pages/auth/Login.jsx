@@ -1,74 +1,49 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './Login.module.css';
-
-// ── Hardcoded Users (no backend/database required) ──
-const HARDCODED_USERS = {
-  // Super Admin
-  'ADMIN001': {
-    password: 'admin123',
-    name: 'System Administrator',
-    role: 'super_admin'
-  },
-  // Prison Managers
-  'MGR001': {
-    password: 'manager123',
-    name: 'Ahmed Hassan',
-    role: 'prison_manager'
-  },
-  'MGR002': {
-    password: 'manager123',
-    name: 'Fatima Ali',
-    role: 'prison_manager'
-  },
-  // Officers
-  'OFF001': {
-    password: 'officer123',
-    name: 'Mohamed Youssef',
-    role: 'officer'
-  },
-  'OFF002': {
-    password: 'officer123',
-    name: 'Sara Ibrahim',
-    role: 'officer'
-  },
-  'OFF003': {
-    password: 'officer123',
-    name: 'Omar Khaled',
-    role: 'officer'
-  },
-};
+import { postForm } from '../../services/authentication';
+import { useToast } from '../../context/ToastContext';
 
 export const Login = () => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
+  const toast = useToast();
   const [error, setError] = useState('');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
 
-    const userId = identifier.trim().toUpperCase();
-    const user = HARDCODED_USERS[userId];
+    const userId = identifier.trim();
 
-    if (!user || user.password !== password) {
+    try {
+      const response = await postForm('/login/token', {
+        username: userId,
+        password: password
+      });
+
+      const data = await response.json();
+
+      // Store user info in localStorage (matching authentication.js keys)
+      localStorage.setItem('userRole', data.role);
+      localStorage.setItem('userToken', data.access_token);
+      localStorage.setItem('userNationalId', data.access_token); // access_token IS the national_id in this simplified setup
+      localStorage.setItem('userName', data.name || 'System User');
+
+      toast.success('Login Successful', `Welcome back, ${data.name || 'User'}`);
+
+      // Navigate based on role
+      if (data.role === 'admin') {
+        navigate('/dashboard/superadmin');
+      } else if (data.role === 'manager') {
+        navigate('/dashboard/manager');
+      } else {
+        navigate('/dashboard/officer');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
       setError('Invalid credentials. Please try again.');
-      return;
-    }
-
-    // Store user info in localStorage
-    localStorage.setItem('userRole', user.role);
-    localStorage.setItem('userName', user.name);
-    localStorage.setItem('userNationalId', userId);
-
-    // Navigate based on role
-    if (user.role === 'super_admin') {
-      navigate('/dashboard/superadmin');
-    } else if (user.role === 'prison_manager') {
-      navigate('/dashboard/manager');
-    } else {
-      navigate('/dashboard/officer');
     }
   };
 
@@ -109,9 +84,6 @@ export const Login = () => {
           <button type="submit" className={styles.loginButton}>Sign In</button>
         </form>
 
-        <div className={styles.demoHint}>
-          Demo: <strong>ADMIN001</strong> / <strong>admin123</strong>
-        </div>
         <div className={styles.portalLink}>
           <Link to="/visit-request">Public Visit Request Portal →</Link>
         </div>
@@ -119,3 +91,4 @@ export const Login = () => {
     </div>
   );
 };
+

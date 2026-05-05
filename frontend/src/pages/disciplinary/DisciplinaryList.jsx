@@ -2,23 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { Plus, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { getDisciplinaryLogs, getInmates, getOfficers } from '../../data/mockData';
 
 export const DisciplinaryList = () => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const rawLogs = getDisciplinaryLogs();  // ← renamed from logs to rawLogs
-    const inmates = getInmates();
-    const officers = getOfficers();
-    const enriched = rawLogs.map(log => ({
-      ...log,
-      inmate_name: inmates.find(i => i.inmate_id === log.inmate_id)?.full_name || '—',
-      imposed_by_name: officers.find(o => o.national_id === log.imposed_by)?.name || '—',
-    }));
-    setLogs(enriched);
-    setLoading(false);
+    fetch('/api/disciplinary')
+      .then(r => r.json())
+      .then(data => { setLogs(data); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Disciplinary Logs...</div>;
