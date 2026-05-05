@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { postForm } from '../../services/authentication';
 import { useToast } from '../../context/ToastContext';
 
 export const InmateForm = () => {
@@ -15,6 +14,7 @@ export const InmateForm = () => {
     nationality: '',
     occupation: '',
     start_date: '',
+    education_level: 'Illiterate',
     assigned_prison: '',
     case_number: '',
     crime_type: '',
@@ -41,10 +41,60 @@ export const InmateForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await postForm('/inmates/add', formData);
-      toast.success('Inmate Admitted', `${formData.full_name} has been successfully added to the system.`);
+      const payload = {
+        national_id: formData.national_id,
+        full_name: formData.full_name,
+        date_of_birth: formData.date_of_birth,
+        gender: formData.gender,
+        nationality: formData.nationality,
+        start_date: formData.start_date,
+        education_level: formData.education_level
+      };
+
+      if (formData.occupation) {
+        payload.occupation = formData.occupation;
+      }
+      
+      if (formData.assigned_prison) {
+        payload.assigned_prison = parseInt(formData.assigned_prison);
+      }
+
+      const response = await fetch('/api/pending_inmates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
+      
+      const payloadResponse = await response.json();
+
+      if (formData.crime_type && formData.court_name) {
+        const casePayload = {
+          crime_type: formData.crime_type,
+          inmate_id: payloadResponse.pending_inmate_id || payloadResponse.inmate_id,
+          court_name: formData.court_name,
+          sentence_duration_years: formData.sentence_years ? parseInt(formData.sentence_years) : 0,
+          sentence_duration_months: formData.sentence_months ? parseInt(formData.sentence_months) : 0,
+          sentence_duration_days: formData.sentence_days ? parseInt(formData.sentence_days) : 0,
+        };
+        await fetch('/api/legal_case', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(casePayload),
+        });
+      }
+
+      toast.success('Inmate Admitted', `${formData.full_name} has been successfully added to the pending queue.`);
       navigate('/inmates');
-    } catch (err) {
+    } catch (error) {
+      console.error(error);
       toast.error('Admission Failed', 'There was an error admitting the inmate. Please check all required fields.');
     }
   };
@@ -65,25 +115,25 @@ export const InmateForm = () => {
               <input type="text" name="full_name" value={formData.full_name} onChange={handleChange} required className={styles.formControl} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>National ID</label>
-              <input type="text" name="national_id" value={formData.national_id} onChange={handleChange} className={styles.formControl} />
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>National ID *</label>
+              <input type="text" name="national_id" value={formData.national_id} onChange={handleChange} required className={styles.formControl} />
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Date of Birth</label>
-              <input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleChange} className={styles.formControl} />
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Date of Birth *</label>
+              <input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleChange} required className={styles.formControl} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Gender</label>
-              <select name="gender" value={formData.gender} onChange={handleChange} className={styles.formControl}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Gender *</label>
+              <select name="gender" value={formData.gender} onChange={handleChange} required className={styles.formControl}>
                 <option>Male</option><option>Female</option><option>Other</option>
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Nationality</label>
-              <input type="text" name="nationality" value={formData.nationality} onChange={handleChange} className={styles.formControl} />
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Nationality *</label>
+              <input type="text" name="nationality" value={formData.nationality} onChange={handleChange} required className={styles.formControl} />
             </div>
           </div>
 
@@ -93,8 +143,20 @@ export const InmateForm = () => {
               <input type="text" name="occupation" value={formData.occupation} onChange={handleChange} className={styles.formControl} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Start Date</label>
-              <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} className={styles.formControl} />
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Education Level *</label>
+              <select name="education_level" value={formData.education_level} onChange={handleChange} className={styles.formControl} required>
+                <option value="Illiterate">Illiterate</option>
+                <option value="Literate">Literate</option>
+                <option value="Primary">Primary</option>
+                <option value="Preparatory">Preparatory</option>
+                <option value="Secondary">Secondary</option>
+                <option value="Bachelor's">Bachelor's</option>
+                <option value="Postgraduate education">Postgraduate education</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Start Date *</label>
+              <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} required className={styles.formControl} />
             </div>
           </div>
 
