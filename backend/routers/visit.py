@@ -58,6 +58,13 @@ def get_timeslots(db: SessionDep):
     return timeslots
 
 
+@router.get("/timeslots/dates", response_model=list[str], status_code=status.HTTP_200_OK)
+def get_timeslot_dates(db: SessionDep):
+    dates = db.execute(text("SELECT DISTINCT date FROM timeslot ORDER BY date")).fetchall()
+    # fetchall returns a list of tuples like [('2026-05-06',), ('2026-05-07',)]
+    return [d[0] for d in dates]
+
+
 # ---------------------------------------------------------------------------
 # Visit endpoints
 # ---------------------------------------------------------------------------
@@ -69,7 +76,6 @@ def _visit_query() -> str:
             v.visit_id,
             v.visit_type,
             v.visit_date,
-            v.timeslot_id,
             i.full_name  AS inmate_name,
             vis.full_name AS visitor_name,
             v.status,
@@ -118,15 +124,15 @@ async def create_visit(request: schemas.VisitCreate, db: SessionDep):
                             detail=f"Visitor with national_id {request.visitor_id} not found")
 
     # Validate timeslot exists
-    timeslot = db.execute(text("SELECT timeslot_id FROM timeslot WHERE timeslot_id = :id"),
-                          {"id": request.timeslot_id}).fetchone()
+    timeslot = db.execute(text("SELECT date FROM timeslot WHERE date = :date"),
+                          {"date": request.visit_date}).fetchone()
     if not timeslot:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Timeslot with id {request.timeslot_id} not found")
+                            detail=f"Timeslot with date {request.visit_date} not found")
 
     result = db.execute(text("""
-        INSERT INTO visit (visit_type, visit_date, timeslot_id, inmate_id, visitor_id)
-        VALUES (:visit_type, :visit_date, :timeslot_id, :inmate_id, :visitor_id)
+        INSERT INTO visit (visit_type, visit_date, inmate_id, visitor_id)
+        VALUES (:visit_type, :visit_date, :inmate_id, :visitor_id)
         RETURNING visit_id
     """), request.model_dump())
 
@@ -210,3 +216,102 @@ def delete_visit(visit_id: int, db: SessionDep):
 
     db.execute(text("DELETE FROM visit WHERE visit_id = :visit_id"), {"visit_id": visit_id})
     db.commit()
+
+
+@router.patch("/{visit_id}/confirm", response_model=schemas.VisitResponse, status_code=status.HTTP_200_OK)
+async def confirm_visit(visit_id: int, db: SessionDep):
+    existing = db.execute(text("SELECT visit_id, visitor_id, inmate_id, visit_date FROM visit WHERE visit_id = :visit_id"),
+                          {"visit_id": visit_id}).fetchone()
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Visit with id {visit_id} not found"
+        )
+        
+    db.execute(text("""
+        UPDATE visit
+        SET status = 'Approved', denial_reason = NULL
+        WHERE visit_id = :visit_id
+    """), {"visit_id": visit_id})
+    db.commit()
+
+    updated_visit = db.execute(text(f"""
+        {_visit_query()}
+        WHERE v.visit_id = :visit_id
+    """), {"visit_id": visit_id}).fetchone()
+
+    # Send confirmation email
+    visitor_info = db.execute(text("SELECT email, full_name FROM visitor WHERE national_id = :visitor_id"), 
+                              {"visitor_id": existing.visitor_id}).fetchone()
+    inmate_info = db.execute(text("SELECT full_name FROM inmate WHERE inmate_id = :inmate_id"), 
+                             {"inmate_id": existing.inmate_id}).fetchone()
+    timeslot_info = db.execute(text("SELECT start_time, end_time FROM timeslot WHERE date = :date"),
+                               {"date": existing.visit_date}).fetchone()
+
+    prison_info = db.execute(text("SELECT name FROM prison LIMIT 1")).fetchone()
+    prison_name = prison_info.name if prison_info else "Central Prison"
+
+    if visitor_info and visitor_info.email and inmate_info and timeslot_info:
+        from email_service import visit_confirmed_email
+        try:
+            visit_time = f"{timeslot_info.start_time} - {timeslot_info.end_time}"
+            await visit_confirmed_email(
+                email=visitor_info.email,
+                visitor_name=visitor_info.full_name,
+                inmate_name=inmate_info.full_name,
+                visit_date=str(existing.visit_date),
+                visit_time=visit_time,
+                prison_name=prison_name
+            )
+        except Exception:
+            pass
+
+    return updated_visit
+
+
+@router.patch("/{visit_id}/reject", response_model=schemas.VisitResponse, status_code=status.HTTP_200_OK)
+async def reject_visit(visit_id: int, request: schemas.RejectVisitRequest, db: SessionDep):
+    existing = db.execute(text("SELECT visit_id, visitor_id, inmate_id FROM visit WHERE visit_id = :visit_id"),
+                          {"visit_id": visit_id}).fetchone()
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Visit with id {visit_id} not found"
+        )
+        
+    db.execute(text("""
+        UPDATE visit
+        SET status = 'Denied', denial_reason = :denial_reason
+        WHERE visit_id = :visit_id
+    """), {"visit_id": visit_id, "denial_reason": request.denial_reason})
+    db.commit()
+
+    updated_visit = db.execute(text(f"""
+        {_visit_query()}
+        WHERE v.visit_id = :visit_id
+    """), {"visit_id": visit_id}).fetchone()
+
+    # Send rejection email
+    visitor_info = db.execute(text("SELECT email, full_name FROM visitor WHERE national_id = :visitor_id"), 
+                              {"visitor_id": existing.visitor_id}).fetchone()
+    inmate_info = db.execute(text("SELECT full_name FROM inmate WHERE inmate_id = :inmate_id"), 
+                             {"inmate_id": existing.inmate_id}).fetchone()
+    
+    prison_info = db.execute(text("SELECT name FROM prison LIMIT 1")).fetchone()
+    prison_name = prison_info.name if prison_info else "Central Prison"
+
+    if visitor_info and visitor_info.email and inmate_info:
+        from email_service import visit_rejected_email
+        try:
+            await visit_rejected_email(
+                email=visitor_info.email,
+                visitor_name=visitor_info.full_name,
+                inmate_name=inmate_info.full_name,
+                prison_name=prison_name,
+                reason=request.denial_reason
+            )
+        except Exception:
+            pass
+
+    return updated_visit
+

@@ -2,8 +2,7 @@ from sqlmodel import SQLModel
 
 
 class TimeslotResponse(SQLModel):
-    timeslot_id: int
-    label: str
+    date: str
     start_time: str
     end_time: str
 
@@ -11,7 +10,6 @@ class TimeslotResponse(SQLModel):
 class VisitCreate(SQLModel):
     visit_type: str = "Regular"   # 'Regular' | 'Legal'
     visit_date: str
-    timeslot_id: int
     inmate_id: int
     visitor_id: str
 
@@ -20,18 +18,20 @@ class VisitUpdate(SQLModel):
     status: str | None = None           # 'Pending' | 'Approved' | 'Denied'
     denial_reason: str | None = None
     visit_date: str | None = None
-    timeslot_id: int | None = None
 
 
 class VisitResponse(SQLModel):
     visit_id: int
     visit_type: str
     visit_date: str
-    timeslot_id: int
     inmate_name: str
     visitor_name: str
     status: str
     denial_reason: str | None = None
+
+
+class RejectVisitRequest(SQLModel):
+    denial_reason: str
 
 
 class VisitorCreate(SQLModel):

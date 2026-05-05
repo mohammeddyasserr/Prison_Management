@@ -2,7 +2,7 @@ from .prison import PrisonResponse, PrisonCreate
 from .visit import (
     VisitCreate, VisitUpdate, VisitResponse,
     VisitorCreate, VisitorResponse,
-    TimeslotResponse,
+    TimeslotResponse, RejectVisitRequest
 )
 from .block import BlockCreate, BlockResponse
 from .cell import CellCreate, CellResponse
