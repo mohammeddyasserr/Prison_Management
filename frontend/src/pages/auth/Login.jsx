@@ -25,7 +25,6 @@ export const Login = () => {
 
       // Store user info in localStorage
       localStorage.setItem('userRole', data.role);
-      localStorage.setItem('userNationalId', data.access_token);
       localStorage.setItem('token', data.access_token);
 
       // Navigate based on role
