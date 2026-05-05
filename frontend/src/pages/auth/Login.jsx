@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './Login.module.css';
-import { postForm } from '../../lib/http';
+import { postForm } from '../../services/authentication';
 
 export const Login = () => {
   const [identifier, setIdentifier] = useState('');

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Plus, Eye, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { hasRole } from '../../lib/auth';
+import { hasRole } from '../../services/authentication';
 import { getInmates, getPrisons } from '../../data/mockData';
 
 export const InmatesList = () => {

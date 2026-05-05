@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Trash2, Clock } from 'lucide-react';
 import styles from '../EntityStyles.module.css';
-import { postForm } from '../../lib/http';
+import { postForm } from '../../services/authentication';
 
 export const VisitSlots = () => {
   const [slots, setSlots] = useState([]);

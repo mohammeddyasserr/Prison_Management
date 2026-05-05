@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { User, Scale, AlertTriangle, ShieldAlert, HeartPulse, LogOut } from 'lucide-react';
 import styles from '../EntityStyles.module.css';
-import { hasRole } from '../../lib/auth';
-import { postForm } from '../../lib/http';
+import { hasRole } from '../../services/authentication';
+import { postForm } from '../../services/authentication';
 import { getInmateDetail, getPrisons, getBlocks, getDoctors } from '../../data/mockData';
 
 export const InmateDetail = () => {

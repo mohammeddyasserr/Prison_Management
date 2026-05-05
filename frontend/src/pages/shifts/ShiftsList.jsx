@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Trash2, Calendar } from 'lucide-react';
 import styles from '../EntityStyles.module.css';
-import { hasRole } from '../../lib/auth';
-import { postForm } from '../../lib/http';
+import { hasRole } from '../../services/authentication';
+import { postForm } from '../../services/authentication';
 import { getShifts, getOfficers, getBlocks, getPrisons } from '../../data/mockData';
 
 export const ShiftsList = () => {

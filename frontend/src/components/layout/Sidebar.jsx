@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import styles from './Sidebar.module.css';
-import { formatRoleLabel, getUserName, getUserRole } from '../../lib/auth';
+import { formatRoleLabel, getUserName, getUserRole } from '../../services/authentication';
 
 const navItemsByRole = {
   super_admin: [

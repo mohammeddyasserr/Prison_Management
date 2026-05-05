@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Building2, Shield, Info, Layers, Plus } from 'lucide-react';
 import styles from '../EntityStyles.module.css';
-import { hasRole } from '../../lib/auth';
-import { postForm } from '../../lib/http';
+import { hasRole } from '../../services/authentication';
+import { postForm } from '../../services/authentication';
 import { getPrisonDetail, getOfficers } from '../../data/mockData';
 
 export const PrisonDetail = () => {

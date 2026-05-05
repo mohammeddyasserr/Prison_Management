@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { postForm } from '../../lib/http';
+import { postForm } from '../../services/authentication';
 import { getPrisons } from '../../data/mockData';
 
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { postForm } from '../../lib/http';
+import { postForm } from '../../services/authentication';
 import { getInmateDetail, getBlocks, getCells } from '../../data/mockData';
 
 export const InmateAssignForm = () => {
