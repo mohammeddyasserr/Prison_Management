@@ -19,7 +19,7 @@ def hash_password(password: str) -> str:
 def get_user(db: SessionDep, username: str):
     # Check super admin first
     query = text("""
-        SELECT national_id, password_hash 
+        SELECT national_id, password_hash, name 
         FROM super_admin 
         WHERE email = :username 
            OR national_id = :username 
@@ -27,11 +27,11 @@ def get_user(db: SessionDep, username: str):
     """)
     user = db.exec(query, params={"username": username}).fetchone()
     if user:
-        return {"national_id": user[0], "password_hash": user[1], "role": "admin"}
+        return {"national_id": user[0], "password_hash": user[1], "name": user[2], "role": "admin"}
     
     # Check officer next
     query_officer = text("""
-        SELECT national_id, password_hash 
+        SELECT national_id, password_hash, name 
         FROM officer 
         WHERE email = :username 
            OR national_id = :username 
@@ -49,7 +49,7 @@ def get_user(db: SessionDep, username: str):
         manager = db.exec(manager_query, params={"national_id": officer[0]}).fetchone()
         
         role = "manager" if manager else "officer"
-        return {"national_id": officer[0], "password_hash": officer[1], "role": role}
+        return {"national_id": officer[0], "password_hash": officer[1], "name": officer[2], "role": role}
 
     return None
 
