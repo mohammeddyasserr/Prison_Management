@@ -35,7 +35,7 @@ def get_visit(visit_id: int, db: SessionDep):
 
 
 @router.post("", response_model=schemas.VisitResponse, status_code=status.HTTP_201_CREATED)
-def create_visit(request: schemas.VisitCreate, db: SessionDep):
+async def create_visit(request: schemas.VisitCreate, db: SessionDep):
     result = db.execute(text("""
         INSERT INTO visit (
             visit_type, visit_date, inmate_id,
@@ -48,6 +48,36 @@ def create_visit(request: schemas.VisitCreate, db: SessionDep):
 
     new_visit = result.fetchone()
     db.commit()
+
+    # Get visitor email and name
+    visitor_info = db.execute(text("""
+        SELECT email, full_name FROM visitor WHERE national_id = :visitor_id
+    """), {"visitor_id": request.visitor_id}).fetchone()
+
+    inmate_info = db.execute(text("""
+        SELECT full_name FROM inmate WHERE inmate_id = :inmate_id
+    """), {"inmate_id": request.inmate_id}).fetchone()
+
+    # Get the prison name (assuming one primary prison facility for the system or getting the first)
+    prison_info = db.execute(text("""
+        SELECT name FROM prison LIMIT 1
+    """)).fetchone()
+    prison_name = prison_info.name if prison_info else "Central Prison"
+
+    if visitor_info and visitor_info.email and inmate_info:
+        from email_service import visit_requested_email
+        try:
+            await visit_requested_email(
+                email=visitor_info.email,
+                visitor_name=visitor_info.full_name,
+                inmate_name=inmate_info.full_name,
+                visit_date=str(request.visit_date),
+                prison_name=prison_name
+            )
+        except Exception as e:
+            # You might want to log this error instead of failing the request
+            pass
+
     return new_visit
 
 
