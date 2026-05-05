@@ -1,4 +1,9 @@
 from .prison import PrisonResponse, PrisonCreate
+from .visit import (
+    VisitCreate, VisitUpdate, VisitResponse,
+    VisitorCreate, VisitorResponse,
+    TimeslotResponse,
+)
 from .block import BlockCreate, BlockResponse
 from .cell import CellCreate, CellResponse
 from .staff import StaffResponse, StaffCreate
