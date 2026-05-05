@@ -100,52 +100,36 @@ def get_inmate_by_national_id(national_id: str, db: SessionDep):
 
     return dict(result._mapping)
 
-@router.post("", status_code=status.HTTP_201_CREATED, response_model=schemas.InmateResponse)
-def create_inmate(request: schemas.InmateCreate, db: SessionDep):
+@router.post("", status_code=status.HTTP_201_CREATED, response_model=schemas.PendingInmateResponse)
+def create_inmate(request: schemas.PendingInmateCreate, db: SessionDep):
     inmate_data = request.model_dump()
     
     result = db.execute(text("""
-        INSERT INTO inmate (
+        INSERT INTO pending_inmate (
             national_id, full_name, date_of_birth, gender, nationality, 
-            occupation, start_date, education_level, assigned_cell, assigned_prison, status
+            occupation, start_date, education_level, assigned_prison
         ) VALUES (
             :national_id, :full_name, :date_of_birth, :gender, :nationality, 
-            :occupation, :start_date, :education_level, :assigned_cell, :assigned_prison, :status
+            :occupation, :start_date, :education_level, :assigned_prison
         ) RETURNING *
     """), inmate_data)
     
-    inserted_inmate = result.fetchone()
-    inmate_id = inserted_inmate.inmate_id
+    inserted_pending_inmate = result.fetchone()
+    pending_inmate_id = inserted_pending_inmate.pending_inmate_id
     
     # Fetch the full data with joins to return consistent response
-    new_inmate_result = db.execute(text("""
+    new_result = db.execute(text("""
         SELECT 
-            i.*,
-            CASE 
-                WHEN i.status = 'Active' AND date('now') > date(i.start_date, 
-                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
-                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
-                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') 
-                THEN 'To be released'
-                ELSE i.status 
-            END as status,
-            p.name as prison_name,
-            date(i.start_date, 
-                 '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
-                 '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
-                 '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
-        FROM inmate i
-        LEFT JOIN cell c ON i.assigned_cell = c.cell_id
-        LEFT JOIN block b ON c.block_id = b.block_id
-        LEFT JOIN prison p ON b.prison_id = p.prison_id
-        LEFT JOIN legal_case lc ON i.inmate_id = lc.inmate_id
-        WHERE i.inmate_id = :inmate_id
-        GROUP BY i.inmate_id
-    """), {"inmate_id": inmate_id}).fetchone()
+            pi.*,
+            p.name as prison_name
+        FROM pending_inmate pi
+        LEFT JOIN prison p ON pi.assigned_prison = p.prison_id
+        WHERE pi.pending_inmate_id = :pending_inmate_id
+    """), {"pending_inmate_id": pending_inmate_id}).fetchone()
     
-    new_inmate = dict(new_inmate_result._mapping)
+    new_pending_inmate = dict(new_result._mapping)
     db.commit()
-    return new_inmate
+    return new_pending_inmate
 
 @router.delete("/{inmate_id}/release", response_model=schemas.InmateResponse, status_code=status.HTTP_200_OK)
 def release_inmate(inmate_id: int, db: SessionDep):
