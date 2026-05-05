@@ -4,6 +4,7 @@ from routers import prison
 from routers import inmate
 from routers import legal_case
 from routers import shift
+from routers import pending_inmate
 
 app = FastAPI()
 
@@ -15,3 +16,5 @@ app.include_router(prison.router)
 app.include_router(inmate.router)
 app.include_router(legal_case.router)
 app.include_router(shift.router)
+app.include_router(pending_inmate.router)
+

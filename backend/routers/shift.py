@@ -14,7 +14,6 @@ def get_all(db: SessionDep):
         SELECT 
             s.*,
             o.name as officer_name,
-            b.security_level as block_name,
             p.name as prison_name,
             CASE s.shift_type 
                 WHEN 'Morning' THEN '06:00 - 14:00'
@@ -48,7 +47,6 @@ def create_shift(request: schemas.ShiftCreate, db: SessionDep):
         SELECT 
             s.*,
             o.name as officer_name,
-            b.security_level as block_name,
             p.name as prison_name,
             CASE s.shift_type 
                 WHEN 'Morning' THEN '06:00 - 14:00'
@@ -71,7 +69,6 @@ def get_shifts_by_block(block_id: int, db: SessionDep):
         SELECT 
             s.*,
             o.name as officer_name,
-            b.security_level as block_name,
             p.name as prison_name,
             CASE s.shift_type 
                 WHEN 'Morning' THEN '06:00 - 14:00'
@@ -94,7 +91,6 @@ def get_shifts_by_prison(prison_id: int, db: SessionDep):
         SELECT 
             s.*,
             o.name as officer_name,
-            b.security_level as block_name,
             p.name as prison_name,
             CASE s.shift_type 
                 WHEN 'Morning' THEN '06:00 - 14:00'
@@ -117,7 +113,6 @@ def get_shifts_by_officer(officer_id: str, db: SessionDep):
         SELECT 
             s.*,
             o.name as officer_name,
-            b.security_level as block_name,
             p.name as prison_name,
             CASE s.shift_type 
                 WHEN 'Morning' THEN '06:00 - 14:00'
@@ -133,3 +128,34 @@ def get_shifts_by_officer(officer_id: str, db: SessionDep):
     """), {"officer_id": officer_id}).fetchall()
     
     return [dict(row._mapping) for row in shifts]
+
+@router.delete("/{shift_id}", response_model=schemas.ShiftResponse, status_code=status.HTTP_200_OK)
+def delete_shift(shift_id: int, db: SessionDep):
+    # Fetch with joins before deletion
+    full_shift = db.execute(text("""
+        SELECT 
+            s.*,
+            o.name as officer_name,
+            p.name as prison_name,
+            CASE s.shift_type 
+                WHEN 'Morning' THEN '06:00 - 14:00'
+                WHEN 'Afternoon' THEN '14:00 - 22:00'
+                WHEN 'Night' THEN '22:00 - 06:00'
+                ELSE 'Unknown'
+            END as time_range
+        FROM Shift s
+        LEFT JOIN officer o ON s.officer_id = o.national_id
+        LEFT JOIN block b ON s.block_id = b.block_id
+        LEFT JOIN prison p ON b.prison_id = p.prison_id
+        WHERE s.shift_id = :shift_id
+    """), {"shift_id": shift_id}).fetchone()
+
+    if not full_shift:
+        raise HTTPException(status_code=404, detail="Shift not found")
+    
+    shift_dict = dict(full_shift._mapping)
+    
+    db.execute(text("DELETE FROM Shift WHERE shift_id = :shift_id"), {"shift_id": shift_id})
+    db.commit()
+    
+    return shift_dict
