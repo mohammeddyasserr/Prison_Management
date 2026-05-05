@@ -11,69 +11,52 @@ router = APIRouter(
 
 BASE_SELECT = """
     SELECT
-        d.rowid                         AS log_id,
         d.inmate_id,
         d.incident_id,
-        CAST(d.imposed_by AS TEXT)      AS imposed_by,
+        CAST(d.imposed_by AS TEXT)                          AS imposed_by,
         d.punishment_type,
         d.solitary_days,
         d.date_imposed,
+        DATE(d.date_imposed, '+' || d.solitary_days || ' days') AS end_date,
         d.notes,
-        im.full_name                    AS inmate_name,
-        o.name                          AS officer_name
+        im.full_name                                        AS inmate_name,
+        o.name                                              AS officer_name
     FROM disciplinary_log d
     LEFT JOIN inmate  im ON im.inmate_id  = d.inmate_id
     LEFT JOIN officer o  ON o.national_id = d.imposed_by
 """
  
  
-def get_log_or_404(log_id: int, db):
-    record = db.execute(text(f"""
-        {BASE_SELECT}
-        WHERE d.rowid = :log_id
-    """), {"log_id": log_id}).fetchone()
+def get_log_or_404(inmate_id: int, imposed_by: str, incident_id: int | None, db):
+    if incident_id is not None:
+        condition = "WHERE d.inmate_id = :inmate_id AND d.imposed_by = :imposed_by AND d.incident_id = :incident_id"
+        params = {"inmate_id": inmate_id, "imposed_by": imposed_by, "incident_id": incident_id}
+    else:
+        condition = "WHERE d.inmate_id = :inmate_id AND d.imposed_by = :imposed_by AND d.incident_id IS NULL"
+        params = {"inmate_id": inmate_id, "imposed_by": imposed_by}
+ 
+    record = db.execute(text(f"{BASE_SELECT} {condition}"), params).fetchone()
  
     if not record:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Disciplinary log with id {log_id} not found"
+            detail="Disciplinary log not found"
         )
     return record
 
 
-# get all disciplinary logs
-@router.get(
-    "",
-    response_model=list[schemas.DisciplinaryResponse],
-    status_code=status.HTTP_200_OK,
-    summary="Get all disciplinary logs"
-)
-def get_all_disciplinary(
-    db: SessionDep,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
-):
+# ------------------------------get all disciplinary logs ---------------------------------------------
+@router.get("", response_model=list[schemas.DisciplinaryResponse], status_code=status.HTTP_200_OK, summary="Get all disciplinary logs")
+def get_all_disciplinary(db: SessionDep):
     records = db.execute(text(f"""
         {BASE_SELECT}
         ORDER BY d.date_imposed DESC
-        LIMIT :limit OFFSET :skip
-    """), {"limit": limit, "skip": skip}).fetchall()
- 
+    """)).fetchall()
     return records
 
-# get disciplinary logs for a specific inmate
-@router.get(
-    "/inmate/{inmate_id}",
-    response_model=list[schemas.DisciplinaryResponse],
-    status_code=status.HTTP_200_OK,
-    summary="Get all disciplinary logs for a specific inmate"
-)
-def get_disciplinary_by_inmate(
-    inmate_id: int,
-    db: SessionDep,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
-):
+# ------------------------------get disciplinary logs for a specific inmate ---------------------------------------------
+@router.get("/inmate/{inmate_id}", response_model=list[schemas.DisciplinaryResponse], status_code=status.HTTP_200_OK, summary="Get all disciplinary logs for a specific inmate")
+def get_disciplinary_by_inmate(inmate_id: int, db: SessionDep):
     inmate = db.execute(
         text("SELECT inmate_id FROM inmate WHERE inmate_id = :id"),
         {"id": inmate_id}
@@ -86,25 +69,14 @@ def get_disciplinary_by_inmate(
         {BASE_SELECT}
         WHERE d.inmate_id = :inmate_id
         ORDER BY d.date_imposed DESC
-        LIMIT :limit OFFSET :skip
-    """), {"inmate_id": inmate_id, "limit": limit, "skip": skip}).fetchall()
- 
+    """), {"inmate_id": inmate_id}).fetchall()
     return records
 
 
-# get disciplinary logs for a specific incident
-@router.get(
-    "/incident/{incident_id}",
-    response_model=list[schemas.DisciplinaryResponse],
-    status_code=status.HTTP_200_OK,
-    summary="Get all disciplinary logs linked to a specific incident"
-)
-def get_disciplinary_by_incident(
-    incident_id: int,
-    db: SessionDep,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
-):
+
+# ------------------------------get disciplinary logs for a specific incident ---------------------------------------------
+@router.get("/incident/{incident_id}", response_model=list[schemas.DisciplinaryResponse], status_code=status.HTTP_200_OK, summary="Get all disciplinary logs for a specific incident")
+def get_disciplinary_by_incident(incident_id: int, db: SessionDep):
     incident = db.execute(
         text("SELECT incident_id FROM incident WHERE incident_id = :id"),
         {"id": incident_id}
@@ -117,30 +89,13 @@ def get_disciplinary_by_incident(
         {BASE_SELECT}
         WHERE d.incident_id = :incident_id
         ORDER BY d.date_imposed DESC
-        LIMIT :limit OFFSET :skip
-    """), {"incident_id": incident_id, "limit": limit, "skip": skip}).fetchall()
- 
+    """), {"incident_id": incident_id}).fetchall()
     return records
  
-# get a single disciplinary log by ID
-@router.get(
-    "/{log_id}",
-    response_model=schemas.DisciplinaryResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Get a single disciplinary log by ID"
-)
-def get_disciplinary(log_id: int, db: SessionDep):
-    return get_log_or_404(log_id, db)
 
 
-
-# create a new disciplinary log
-@router.post(
-    "",
-    response_model=schemas.DisciplinaryResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Add a new disciplinary log"
-)
+# ------------------------------create a new disciplinary log ---------------------------------------------
+@router.post("", response_model=schemas.DisciplinaryResponse, status_code=status.HTTP_201_CREATED)
 def create_disciplinary(request: schemas.DisciplinaryCreate, db: SessionDep):
     # Validate inmate
     inmate = db.execute(
@@ -176,7 +131,7 @@ def create_disciplinary(request: schemas.DisciplinaryCreate, db: SessionDep):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                                 detail="solitary_days must be between 1 and 30 for Solitary Confinement")
     else:
-        request.solitary_days = None   # force null for non-solitary punishments
+        request.solitary_days = None
  
     db.execute(text("""
         INSERT INTO disciplinary_log (
@@ -189,68 +144,76 @@ def create_disciplinary(request: schemas.DisciplinaryCreate, db: SessionDep):
             :date_imposed, :notes
         )
     """), {
-        "inmate_id":      request.inmate_id,
-        "incident_id":    request.incident_id,
-        "imposed_by":     request.imposed_by,
+        "inmate_id":       request.inmate_id,
+        "incident_id":     request.incident_id,
+        "imposed_by":      request.imposed_by,
         "punishment_type": request.punishment_type,
-        "solitary_days":  request.solitary_days,
-        "date_imposed":   request.date_imposed,
-        "notes":          request.notes,
+        "solitary_days":   request.solitary_days,
+        "date_imposed":    request.date_imposed,
+        "notes":           request.notes,
     })
  
     db.commit()
+    return get_log_or_404(request.inmate_id, request.imposed_by, request.incident_id, db)
+
+
+# ----------------------update an existing disciplinary log--------------------------------
+@router.put("", response_model=schemas.DisciplinaryResponse, status_code=status.HTTP_200_OK)
+def update_disciplinary(request: schemas.DisciplinaryUpdate, db: SessionDep):
+    if request.incident_id is not None:
+        condition = "inmate_id = :inmate_id AND imposed_by = :imposed_by AND incident_id = :incident_id"
+        pk_params = {"inmate_id": request.inmate_id, "imposed_by": request.imposed_by, "incident_id": request.incident_id}
+    else:
+        condition = "inmate_id = :inmate_id AND imposed_by = :imposed_by AND incident_id IS NULL"
+        pk_params = {"inmate_id": request.inmate_id, "imposed_by": request.imposed_by}
  
-    new_id = db.execute(text("SELECT last_insert_rowid()")).scalar()
-    return get_log_or_404(new_id, db)
-
-
-# update an existing disciplinary log
-@router.put(
-    "/{log_id}",
-    response_model=schemas.DisciplinaryResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Update a disciplinary log"
-)
-def update_disciplinary(log_id: int, request: schemas.DisciplinaryUpdate, db: SessionDep):
     existing = db.execute(
-        text("SELECT rowid FROM disciplinary_log WHERE rowid = :id"),
-        {"id": log_id}
+        text(f"SELECT 1 FROM disciplinary_log WHERE {condition}"), pk_params
     ).fetchone()
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Disciplinary log {log_id} not found")
+                            detail="Disciplinary log not found")
  
-    update_data = request.model_dump(exclude_unset=True)
+    update_data = request.model_dump(
+        exclude_unset=True,
+        exclude={"inmate_id", "imposed_by", "incident_id"}
+    )
  
     if update_data:
         set_clause = ", ".join(f"{k} = :{k}" for k in update_data.keys())
-        update_data["log_id"] = log_id
         db.execute(text(f"""
             UPDATE disciplinary_log
             SET {set_clause}
-            WHERE rowid = :log_id
-        """), update_data)
+            WHERE {condition}
+        """), {**update_data, **pk_params})
  
     db.commit()
-    return get_log_or_404(log_id, db)
+    return get_log_or_404(request.inmate_id, request.imposed_by, request.incident_id, db)
 
 
-# delete a disciplinary log
-@router.delete(
-    "/{log_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete a disciplinary log"
-)
-def delete_disciplinary(log_id: int, db: SessionDep):
+# -------------------------delete a disciplinary log---------------------------------
+@router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+def delete_disciplinary(
+    inmate_id: int,
+    imposed_by: str,
+    db: SessionDep,
+    incident_id: int | None = None,
+):
+    if incident_id is not None:
+        condition = "inmate_id = :inmate_id AND imposed_by = :imposed_by AND incident_id = :incident_id"
+        params = {"inmate_id": inmate_id, "imposed_by": imposed_by, "incident_id": incident_id}
+    else:
+        condition = "inmate_id = :inmate_id AND imposed_by = :imposed_by AND incident_id IS NULL"
+        params = {"inmate_id": inmate_id, "imposed_by": imposed_by}
+ 
     existing = db.execute(
-        text("SELECT rowid FROM disciplinary_log WHERE rowid = :id"),
-        {"id": log_id}
+        text(f"SELECT 1 FROM disciplinary_log WHERE {condition}"), params
     ).fetchone()
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Disciplinary log {log_id} not found")
+                            detail="Disciplinary log not found")
  
-    db.execute(text("DELETE FROM disciplinary_log WHERE rowid = :id"), {"id": log_id})
+    db.execute(text(f"DELETE FROM disciplinary_log WHERE {condition}"), params)
     db.commit()
 
 
@@ -258,18 +221,8 @@ def delete_disciplinary(log_id: int, db: SessionDep):
 # get disciplinary logs imposed by a specific officer
 #NOT SUREEEE IF THIS SHOULD BE BY OFFICER OR MANAGER OR SUPERADMIN :( 
 
-@router.get(
-    "/officer/{national_id}",
-    response_model=list[schemas.DisciplinaryResponse],
-    status_code=status.HTTP_200_OK,
-    summary="Get all disciplinary logs imposed by a specific officer"
-)
-def get_disciplinary_by_officer(
-    national_id: str,
-    db: SessionDep,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
-):
+@router.get("/officer/{national_id}", response_model=list[schemas.DisciplinaryResponse], status_code=status.HTTP_200_OK, summary="Get all disciplinary logs imposed by a specific officer")
+def get_disciplinary_by_officer(national_id: str, db: SessionDep):
     officer = db.execute(
         text("SELECT national_id FROM officer WHERE national_id = :id"),
         {"id": national_id}
@@ -282,7 +235,5 @@ def get_disciplinary_by_officer(
         {BASE_SELECT}
         WHERE d.imposed_by = :national_id
         ORDER BY d.date_imposed DESC
-        LIMIT :limit OFFSET :skip
-    """), {"national_id": national_id, "limit": limit, "skip": skip}).fetchall()
- 
+    """), {"national_id": national_id}).fetchall()
     return records
