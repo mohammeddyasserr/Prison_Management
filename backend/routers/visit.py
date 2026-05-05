@@ -1,6 +1,11 @@
 from fastapi import APIRouter, status, HTTPException
 from sqlmodel import text
-import schemas
+import schemas.prison
+import schemas.block
+import schemas.cell
+import schemas.inmate
+import schemas.visit
+import schemas.legal_case
 from database import SessionDep
 
 router = APIRouter(
@@ -54,13 +59,55 @@ def get_visitor(national_id: str, db: SessionDep):
 
 @router.get("/timeslots", response_model=list[schemas.TimeslotResponse], status_code=status.HTTP_200_OK)
 def get_timeslots(db: SessionDep):
-    timeslots = db.execute(text("SELECT * FROM timeslot")).fetchall()
+    timeslots = db.execute(text("SELECT * FROM timeslot WHERE date >= CURRENT_DATE ORDER BY date, start_time")).fetchall()
     return timeslots
+
+
+@router.post("/timeslots", response_model=schemas.TimeslotResponse, status_code=status.HTTP_201_CREATED)
+def create_timeslot(request: schemas.visit.TimeslotCreate, db: SessionDep):
+    req_dict = request.model_dump()
+    req_dict["date"] = str(req_dict["date"])
+    req_dict["start_time"] = str(req_dict["start_time"])
+    req_dict["end_time"] = str(req_dict["end_time"])
+
+    existing = db.execute(text("""
+        SELECT * FROM timeslot WHERE date = :date AND start_time = :start_time AND end_time = :end_time
+    """), req_dict).fetchone()
+
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Timeslot already exists"
+        )
+
+    result = db.execute(text("""
+        INSERT INTO timeslot (date, start_time, end_time)
+        VALUES (:date, :start_time, :end_time)
+        RETURNING *
+    """), req_dict)
+
+    new_timeslot = result.fetchone()
+    db.commit()
+    return new_timeslot
+
+
+@router.delete("/timeslots/{slot_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_timeslot(slot_id: int, db: SessionDep):
+    existing = db.execute(text("SELECT slot_id FROM timeslot WHERE slot_id = :slot_id"),
+                          {"slot_id": slot_id}).fetchone()
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Timeslot with id {slot_id} not found"
+        )
+
+    db.execute(text("DELETE FROM timeslot WHERE slot_id = :slot_id"), {"slot_id": slot_id})
+    db.commit()
 
 
 @router.get("/timeslots/dates", response_model=list[str], status_code=status.HTTP_200_OK)
 def get_timeslot_dates(db: SessionDep):
-    dates = db.execute(text("SELECT DISTINCT date FROM timeslot ORDER BY date")).fetchall()
+    dates = db.execute(text("SELECT DISTINCT date FROM timeslot WHERE date >= CURRENT_DATE ORDER BY date")).fetchall()
     # fetchall returns a list of tuples like [('2026-05-06',), ('2026-05-07',)]
     return [d[0] for d in dates]
 

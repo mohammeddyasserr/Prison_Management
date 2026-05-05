@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './PublicVisitRequest.module.css';
 
@@ -11,27 +11,13 @@ const initialFormData = {
   phone: '',
   email: '',
   visit_date: '',
-  time_slot: '',
 };
 
 const relationships = ['Spouse', 'Parent', 'Sibling', 'Friend', 'Lawyer', 'Other'];
 
-const getUpcomingDays = () => {
-  const days = [];
-  const today = new Date();
-  for (let i = 1; i <= 14; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-    if (date.getDay() !== 5 && date.getDay() !== 6) {
-      days.push(date.toISOString().split('T')[0]);
-    }
-  }
-  return days;
-};
-
 export const PublicVisitRequest = () => {
   const [formData, setFormData] = useState(initialFormData);
-  const [timeSlots, setTimeSlots] = useState([]);
+  const [availableDates, setAvailableDates] = useState([]);
   const [context, setContext] = useState({
     loading: false,
     checkedId: '',
@@ -51,13 +37,11 @@ export const PublicVisitRequest = () => {
     error: '',
   });
 
-  const upcomingDays = useMemo(() => getUpcomingDays(), []);
-
   useEffect(() => {
-    fetch('/api/visit/timeslots')
+    fetch('/api/visit/timeslots/dates')
       .then(r => r.json())
-      .then(data => setTimeSlots(data))
-      .catch(err => console.error('Failed to load timeslots', err));
+      .then(data => setAvailableDates(data))
+      .catch(err => console.error('Failed to load dates', err));
   }, []);
 
   const handleChange = (e) => {
@@ -70,7 +54,6 @@ export const PublicVisitRequest = () => {
         setContext({ loading: false, checkedId: '', inmate: null, error: '' });
         setVisitorContext({ loading: false, checkedId: '', visitor: null, isNew: false, error: '' });
         next.visit_date = '';
-        next.time_slot = '';
       }
 
       if (name === 'visitor_national_id') {
@@ -80,7 +63,6 @@ export const PublicVisitRequest = () => {
         next.email = '';
         next.relationship = '';
         next.visit_date = '';
-        next.time_slot = '';
       }
 
       return next;
@@ -119,7 +101,7 @@ export const PublicVisitRequest = () => {
         error: '',
       });
       return true;
-    } catch (err) {
+    } catch {
       setContext({
         loading: false,
         checkedId: inmateNationalId,
@@ -182,7 +164,7 @@ export const PublicVisitRequest = () => {
         relationship: found.relationship || ''
       }));
 
-    } catch (err) {
+    } catch {
       setVisitorContext({
         loading: false,
         checkedId: visitorId,
@@ -225,7 +207,6 @@ export const PublicVisitRequest = () => {
         inmate_id: context.inmate.inmate_id,
         visitor_id: visitorId,
         visit_date: formData.visit_date,
-        timeslot_id: parseInt(formData.time_slot), // backend expects int
         visit_type: formData.visit_type
       };
 
@@ -437,46 +418,28 @@ export const PublicVisitRequest = () => {
             {context.inmate && (visitorContext.visitor || visitorContext.isNew) && (
               <>
                 <h3 className={styles.sectionTitle}>3. Schedule Visit</h3>
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label htmlFor="visit_date">Visit Date *</label>
-                    <select
-                      id="visit_date"
-                      name="visit_date"
-                      value={formData.visit_date}
-                      onChange={handleChange}
-                      className={styles.formControl}
-                      required
-                    >
-                      <option value="">Select a date</option>
-                      {upcomingDays.map(date => (
-                        <option key={date} value={date}>
-                          {new Date(date + 'T00:00:00').toLocaleDateString(undefined, {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label htmlFor="time_slot">Time Slot *</label>
-                    <select
-                      id="time_slot"
-                      name="time_slot"
-                      value={formData.time_slot}
-                      onChange={handleChange}
-                      className={styles.formControl}
-                      required
-                    >
-                      <option value="">Select a time</option>
-                      {timeSlots.map(slot => (
-                        <option key={slot.timeslot_id} value={slot.timeslot_id}>{slot.label}</option>
-                      ))}
-                    </select>
-                  </div>
+                <div className={styles.formGroup}>
+                  <label htmlFor="visit_date">Visit Date *</label>
+                  <select
+                    id="visit_date"
+                    name="visit_date"
+                    value={formData.visit_date}
+                    onChange={handleChange}
+                    className={styles.formControl}
+                    required
+                  >
+                    <option value="">Select a date</option>
+                    {availableDates.map(date => (
+                      <option key={date} value={date}>
+                        {new Date(date + 'T00:00:00').toLocaleDateString(undefined, {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className={styles.formGroup}>

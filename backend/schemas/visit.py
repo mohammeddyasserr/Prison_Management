@@ -1,10 +1,20 @@
 from sqlmodel import SQLModel
+import datetime
 
 
 class TimeslotResponse(SQLModel):
     date: str
     start_time: str
     end_time: str
+
+
+class TimeslotCreate(SQLModel):
+    date: datetime.date
+    start_time: datetime.time
+    end_time: datetime.time
+
+    class Config:
+        from_attributes = True
 
 
 class VisitCreate(SQLModel):

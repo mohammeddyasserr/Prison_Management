@@ -17,6 +17,7 @@ from routers import doctor
 from routers import medical_visit
 from routers import authentication
 import models
+from schemas.visit import TimeslotCreate
 
 app = FastAPI()
 
