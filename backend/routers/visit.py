@@ -52,6 +52,12 @@ def get_visitor(national_id: str, db: SessionDep):
     return visitor
 
 
+@router.get("/timeslots", response_model=list[schemas.TimeslotResponse], status_code=status.HTTP_200_OK)
+def get_timeslots(db: SessionDep):
+    timeslots = db.execute(text("SELECT * FROM timeslot")).fetchall()
+    return timeslots
+
+
 # ---------------------------------------------------------------------------
 # Visit endpoints
 # ---------------------------------------------------------------------------

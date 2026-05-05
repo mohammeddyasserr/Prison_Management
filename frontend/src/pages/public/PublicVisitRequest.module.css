@@ -44,11 +44,15 @@
   margin: 0 0 16px;
 }
 
-.lookupRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: end;
+.lookupInputWrapper {
+  display: flex;
+  gap: 10px;
+}
+
+.lookupButton {
+  min-width: 100px;
+  height: 42px;
+  white-space: nowrap;
 }
 
 .formRow {
@@ -73,12 +77,14 @@
 
 .formControl {
   width: 100%;
+  height: 42px;
   padding: 10px 14px;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 6px;
   color: var(--text-primary);
   font-size: 0.9rem;
+  box-sizing: border-box;
 }
 
 .formControl:focus {
@@ -112,11 +118,6 @@
 
 .primaryButton:hover:not(:disabled) {
   background: var(--color-primary-hover);
-}
-
-.lookupButton {
-  min-width: 140px;
-  height: 42px;
 }
 
 .submitButton {
@@ -170,6 +171,54 @@
   font-size: 0.78rem;
 }
 
+.newVisitorSection {
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 12px;
+  border: 1px dashed var(--border-color);
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.newVisitorBadge {
+  position: absolute;
+  top: -10px;
+  right: 16px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.visitorCard {
+  background: rgba(34, 197, 94, 0.08) !important;
+  border-color: rgba(34, 197, 94, 0.22) !important;
+}
+
+.contextGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 24px 0 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.sectionTitle:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
 .footerLink {
   margin-top: 16px;
   text-align: center;
@@ -185,8 +234,8 @@
     padding: 18px;
   }
 
-  .lookupRow {
-    grid-template-columns: 1fr;
+  .lookupInputWrapper {
+    flex-direction: column;
   }
 
   .lookupButton {
