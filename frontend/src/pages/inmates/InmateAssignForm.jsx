@@ -53,7 +53,7 @@ export const InmateAssignForm = () => {
     <div className={styles.container}>
       <h1 className={styles.title}>Assign Cell — {inmate.full_name}</h1>
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '600px' }}>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '100%' }}>
         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>
           PRD 4.1 Stage 2: The Prison Manager assigns the inmate to a specific block and cell.
         </p>

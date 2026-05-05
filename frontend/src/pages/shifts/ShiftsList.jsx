@@ -65,7 +65,7 @@ export const ShiftsList = () => {
       <h1 className={styles.title}>Shift Management</h1>
 
       {hasRole('prison_manager') && (
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px', marginBottom: '24px', maxWidth: '800px' }}>
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px', marginBottom: '24px', maxWidth: '100%' }}>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px' }}>Assign Shift</h2>
           <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
             <div>

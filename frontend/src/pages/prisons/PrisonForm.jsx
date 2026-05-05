@@ -73,7 +73,7 @@ export const PrisonForm = () => {
     <div className={styles.container}>
       <h1 className={styles.title}>{id ? 'Edit' : 'Add New'} Prison</h1>
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '800px' }}>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '100%' }}>
         <form onSubmit={handleSubmit}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>Core Facility Information</h3>
 

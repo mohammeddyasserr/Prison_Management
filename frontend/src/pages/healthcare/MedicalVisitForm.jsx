@@ -41,7 +41,7 @@ export const MedicalVisitForm = () => {
     <div className={styles.container}>
       <h1 className={styles.title}>Record Medical Visit</h1>
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '600px' }}>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '100%' }}>
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Inmate *</label>

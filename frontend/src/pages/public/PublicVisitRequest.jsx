@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './PublicVisitRequest.module.css';
-import { getInmates, getPrisons } from '../../data/mockData';
 
 const initialFormData = {
   inmate_national_id: '',
@@ -67,7 +66,7 @@ export const PublicVisitRequest = () => {
     });
   };
 
-  const lookupInmate = () => {
+  const lookupInmate = async () => {
     const inmateNationalId = formData.inmate_national_id.trim();
     if (!inmateNationalId) {
       setContext({ loading: false, checkedId: '', inmate: null, error: 'Enter the inmate National ID first.' });
@@ -76,37 +75,48 @@ export const PublicVisitRequest = () => {
 
     setContext((current) => ({ ...current, loading: true, error: '' }));
 
-    const inmates = getInmates();
-    const prisons = getPrisons();
-    const found = inmates.find(i => i.national_id === inmateNationalId);
+    try {
+      const response = await fetch('/api/inmates');
+      if (!response.ok) throw new Error('Failed to fetch inmates');
+      const inmates = await response.json();
+      
+      const found = inmates.find(i => String(i.national_id) === String(inmateNationalId));
 
-    if (found) {
-      const prison = prisons.find(p => p.prison_id === found.assigned_prison);
+      if (found) {
+        setContext({
+          loading: false,
+          checkedId: inmateNationalId,
+          inmate: { ...found, prison_name: found.prison_name || '—' },
+          error: '',
+        });
+        return true;
+      }
+
       setContext({
         loading: false,
         checkedId: inmateNationalId,
-        inmate: { ...found, prison_name: prison?.name || '—' },
-        error: '',
+        inmate: null,
+        error: 'Unable to find the inmate with this National ID.',
       });
-      return true;
+      return false;
+    } catch (err) {
+      setContext({
+        loading: false,
+        checkedId: inmateNationalId,
+        inmate: null,
+        error: 'Error connecting to the server. Please try again later.',
+      });
+      return false;
     }
-
-    setContext({
-      loading: false,
-      checkedId: inmateNationalId,
-      inmate: null,
-      error: 'Unable to find the inmate with this National ID.',
-    });
-    return false;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitState({ submitting: true, success: '', error: '' });
 
     let canSubmit = true;
     if (context.checkedId !== formData.inmate_national_id.trim()) {
-      canSubmit = lookupInmate();
+      canSubmit = await lookupInmate();
     }
 
     if (!canSubmit) {
@@ -114,8 +124,29 @@ export const PublicVisitRequest = () => {
       return;
     }
 
-    // Simulate successful submission with mock data
-    setTimeout(() => {
+    try {
+      // Create visit
+      const visitData = {
+        inmate_id: context.inmate.inmate_id,
+        visitor_name: formData.visitor_name,
+        visitor_national_id: formData.visitor_national_id,
+        relationship: formData.relationship,
+        visit_date: formData.visit_date,
+        time_slot: formData.time_slot,
+        visit_type: formData.visit_type,
+        status: 'Scheduled'
+      };
+
+      const response = await fetch('/api/visits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(visitData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit visit request');
+      }
+
       setSubmitState({
         submitting: false,
         success: 'Your visit request has been submitted successfully. You will be notified once it is reviewed.',
@@ -123,7 +154,14 @@ export const PublicVisitRequest = () => {
       });
       setFormData(initialFormData);
       setContext({ loading: false, checkedId: '', inmate: null, error: '' });
-    }, 500);
+
+    } catch (err) {
+      setSubmitState({
+        submitting: false,
+        success: '',
+        error: 'Failed to submit visit request. Please try again.',
+      });
+    }
   };
 
   return (

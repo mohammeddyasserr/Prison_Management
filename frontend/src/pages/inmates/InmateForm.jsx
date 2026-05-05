@@ -47,7 +47,7 @@ export const InmateForm = () => {
     <div className={styles.container}>
       <h1 className={styles.title}>Admit New Inmate</h1>
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '800px' }}>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '100%' }}>
         <form onSubmit={handleSubmit}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>Personal Information</h3>
 

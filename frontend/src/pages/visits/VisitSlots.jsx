@@ -40,7 +40,7 @@ export const VisitSlots = () => {
     <div className={styles.container}>
       <h1 className={styles.title}>Visit Time Slots</h1>
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', marginBottom: '24px', maxWidth: '800px' }}>
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', marginBottom: '24px', maxWidth: '100%' }}>
         <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '20px' }}>Add Time Slot</h2>
         <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px', alignItems: 'flex-end' }}>
           <div>
