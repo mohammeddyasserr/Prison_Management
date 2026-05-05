@@ -1,2 +1,2 @@
-ALTER TABLE time_slots ADD COLUMN date DATE;
-ALTER TABLE time_slots ADD CONSTRAINT unique_date_time_slot UNIQUE (date, start_time, end_time);
+ALTER TABLE timeslot ADD COLUMN date DATE;
+ALTER TABLE timeslot ADD CONSTRAINT unique_date_timeslot UNIQUE (date, start_time, end_time);
