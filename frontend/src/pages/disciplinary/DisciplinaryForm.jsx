@@ -11,20 +11,21 @@ export const DisciplinaryForm = () => {
     inmate_id: '',
     incident_id: '',
     punishment_type: 'Loss of Privileges',
-    solitary_confinement_duration: 0,
+    solitary_days: 0,
     date_imposed: '',
-    end_date: '',
+    imposed_by: '',
     notes: ''
   });
-  const [data, setData] = useState({ inmates: [], incidents: [] });
+  const [data, setData] = useState({ inmates: [], incidents: [], staff: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       fetch('/api/inmates').then(r => r.json()),
       fetch('/api/incidents').then(r => r.json()),
-    ]).then(([inmates, incidents]) => {
-      setData({ inmates, incidents });
+      fetch('/api/staff').then(r => r.json()),
+    ]).then(([inmates, incidents, staff]) => {
+      setData({ inmates, incidents, staff });
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -37,7 +38,37 @@ export const DisciplinaryForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await postForm('/disciplinary/add', formData);
+      if (!formData.inmate_id) {
+        toast.error('Validation Error', 'Please select an inmate.');
+        return;
+      }
+      if (!formData.date_imposed) {
+        toast.error('Validation Error', 'Please select a date.');
+        return;
+      }
+      if (!formData.imposed_by) {
+        toast.error('Validation Error', 'Please select the imposing officer.');
+        return;
+      }
+      
+      const payload = {
+        ...formData,
+        inmate_id: parseInt(formData.inmate_id, 10),
+        incident_id: formData.incident_id ? parseInt(formData.incident_id, 10) : null,
+        solitary_days: formData.solitary_days ? parseInt(formData.solitary_days, 10) : null,
+        imposed_by: formData.imposed_by
+      };
+      const response = await fetch('/api/disciplinary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const responseBody = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.error('API Error:', responseBody);
+        throw new Error(responseBody.detail || 'Submission Failed');
+      }
+
       toast.success('Record Added', 'The disciplinary action has been recorded.');
       navigate('/disciplinary');
     } catch (err) {

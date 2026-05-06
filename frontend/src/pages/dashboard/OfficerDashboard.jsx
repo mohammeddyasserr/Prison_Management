@@ -91,7 +91,7 @@ export const OfficerDashboard = () => {
                   {recent_incidents.map((inc, i) => (
                     <tr key={i}>
                       <td><span className={`${styles.badge} ${styles.badgeDanger}`}>{inc.type}</span></td>
-                      <td style={{ fontSize: '0.8rem' }}>{inc.date_time}</td>
+                      <td style={{ fontSize: '0.8rem' }}>{new Date(inc.occurred_at).toLocaleString()}</td>
                       <td>
                         <Link to={`/incidents/${inc.incident_id}`} className={styles.badgeInfo} style={{ borderRadius: '4px', padding: '4px 8px', display: 'inline-block' }}>
                           View

@@ -87,8 +87,8 @@ export const ManagerDashboard = () => {
           return (
             <div key={i} className={styles.blockItem}>
               <div className={styles.labelRow}>
-                <span>{block.name} ({block.security_level})</span>
-                <span className={`${styles.rateValue} ${rateClass}`}>{block.current_occupancy}/{block.capacity} - {block.occupancy_rate}%</span>
+                <span>Block {block.block_id} ({block.security_level})</span>
+                <span className={`${styles.rateValue} ${rateClass}`}>{block.current_occupancy}/{block.capacity} — {block.occupancy_rate}%</span>
               </div>
               <div className={styles.occupancyBar}>
                 <div className={`${styles.occupancyFill} ${rateClass}`} style={{ width: `${block.occupancy_rate}%` }} />
@@ -191,9 +191,9 @@ export const ManagerDashboard = () => {
                 {recent_incidents.map((inc, i) => (
                   <tr key={i}>
                     <td><span className={`${styles.badge} ${styles.badgeDanger}`}>{inc.type}</span></td>
-                    <td>{inc.block_name}</td>
-                    <td style={{ fontSize: '0.8rem' }}>{inc.date_time}</td>
-                    <td style={{ fontSize: '0.8rem' }}>{inc.action_taken || '-'}</td>
+                    <td>{inc.block_id || '—'}</td>
+                    <td style={{ fontSize: '0.8rem' }}>{new Date(inc.occurred_at).toLocaleString()}</td>
+                    <td style={{ fontSize: '0.8rem' }}>{inc.action_taken || '—'}</td>
                   </tr>
                 ))}
               </tbody>

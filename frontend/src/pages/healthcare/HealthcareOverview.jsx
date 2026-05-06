@@ -11,7 +11,7 @@ export const HealthcareOverview = () => {
   useEffect(() => {
     Promise.all([
       fetch('/api/doctor').then(r => r.json()),
-      fetch('/api/medical_visit').then(r => r.json()),
+      fetch('/api/medical-visit').then(r => r.json()),
     ]).then(([doctors, visits]) => {
       setData({ doctors, visits });
       setLoading(false);

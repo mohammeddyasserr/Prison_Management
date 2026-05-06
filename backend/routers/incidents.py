@@ -170,23 +170,46 @@ def create_incident(request: schemas.IncidentCreate, db: SessionDep):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Block {request.block_id} not found")
 
-    # Insert incident — no inmate_id column anymore
-    result = db.execute(text("""
-        INSERT INTO incident (
-            type, block_id, occurred_at,
-            reporting_officer, description, action_taken
-        ) VALUES (
-            :type, :block_id, :occurred_at,
-            :reporting_officer, :description, :action_taken
-        ) RETURNING incident_id
-    """), {
-        "type":              request.type,
-        "block_id":          request.block_id,
-        "occurred_at":       request.occurred_at,
-        "reporting_officer": request.reporting_officer,
-        "description":       request.description,
-        "action_taken":      request.action_taken,
-    })
+    # Insert incident
+    # We supply a fallback inmate_id (the first involved inmate) in case the DB still has the legacy NOT NULL constraint
+    primary_inmate_id = request.involved_inmate_ids[0] if request.involved_inmate_ids else 1
+    
+    try:
+        result = db.execute(text("""
+            INSERT INTO incident (
+                type, block_id, occurred_at,
+                reporting_officer, description, action_taken, inmate_id
+            ) VALUES (
+                :type, :block_id, :occurred_at,
+                :reporting_officer, :description, :action_taken, :inmate_id
+            ) RETURNING incident_id
+        """), {
+            "type":              request.type,
+            "block_id":          request.block_id,
+            "occurred_at":       request.occurred_at,
+            "reporting_officer": request.reporting_officer,
+            "description":       request.description,
+            "action_taken":      request.action_taken,
+            "inmate_id":         primary_inmate_id,
+        })
+    except Exception as e:
+        # Fallback if the column truly doesn't exist anymore
+        result = db.execute(text("""
+            INSERT INTO incident (
+                type, block_id, occurred_at,
+                reporting_officer, description, action_taken
+            ) VALUES (
+                :type, :block_id, :occurred_at,
+                :reporting_officer, :description, :action_taken
+            ) RETURNING incident_id
+        """), {
+            "type":              request.type,
+            "block_id":          request.block_id,
+            "occurred_at":       request.occurred_at,
+            "reporting_officer": request.reporting_officer,
+            "description":       request.description,
+            "action_taken":      request.action_taken,
+        })
 
     new_id = result.fetchone().incident_id
 

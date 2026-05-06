@@ -16,7 +16,8 @@ export const IncidentForm = () => {
     action_taken: '',
     inmate_ids: [],
     staff_ids: [],
-    witness_ids: []
+    witness_ids: [],
+    reporting_officer: ''
   });
   const [data, setData] = useState({ blocks: [], inmates: [], staff: [] });
   const [loading, setLoading] = useState(true);
@@ -55,7 +56,32 @@ export const IncidentForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await postForm('/incidents/add', formData);
+      if (!formData.reporting_officer) {
+        toast.error('Validation Error', 'Please select a reporting officer.');
+        return;
+      }
+      
+      const payload = {
+        type: formData.type,
+        block_id: formData.block_id ? parseInt(formData.block_id, 10) : null,
+        occurred_at: formData.date_time,
+        reporting_officer: formData.reporting_officer,
+        description: formData.description,
+        action_taken: formData.action_taken,
+        involved_inmate_ids: formData.inmate_ids.map(id => parseInt(id, 10))
+      };
+
+      const response = await fetch('/api/incidents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const responseBody = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.error('API Error:', responseBody);
+        throw new Error(responseBody.detail || 'Submission Failed');
+      }
       toast.success('Incident Reported', 'The incident report has been successfully filed.');
       navigate('/incidents');
     } catch (err) {

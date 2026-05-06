@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlmodel import text
+from datetime import date
 import schemas
 from database import SessionDep
 
@@ -32,14 +33,31 @@ def get_all(db: SessionDep):
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=schemas.ShiftResponse)
 def create_shift(request: schemas.ShiftCreate, db: SessionDep):
     shift_data = request.model_dump()
+    # Convert date to string for SQLite compatibility in raw text queries
+    if isinstance(shift_data.get('date'), date):
+        shift_data['date'] = shift_data['date'].isoformat()
     
-    result = db.execute(text("""
-        INSERT INTO Shift (shift_type, officer_id, manager_id, block_id, date)
-        VALUES (:shift_type, :officer_id, :manager_id, :block_id, :date)
-        RETURNING *
-    """), shift_data)
-    
-    new_shift_id = result.fetchone().shift_id
+    try:
+        result = db.execute(text("""
+            INSERT INTO Shift (shift_type, officer_id, manager_id, block_id, date)
+            VALUES (:shift_type, :officer_id, :manager_id, :block_id, :date)
+            RETURNING shift_id
+        """), shift_data)
+        
+        row = result.fetchone()
+        if row:
+            new_shift_id = row[0]
+        else:
+            # Fallback for drivers that don't support RETURNING with fetchone()
+            new_shift_id = result.lastrowid
+    except Exception as e:
+        # Fallback for older SQLite versions without RETURNING
+        result = db.execute(text("""
+            INSERT INTO Shift (shift_type, officer_id, manager_id, block_id, date)
+            VALUES (:shift_type, :officer_id, :manager_id, :block_id, :date)
+        """), shift_data)
+        new_shift_id = result.lastrowid
+        
     db.commit()
     
     # Fetch with joins for consistent response
