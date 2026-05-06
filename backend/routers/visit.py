@@ -134,8 +134,13 @@ def _visit_query() -> str:
 
 
 @router.get("", response_model=list[schemas.VisitResponse], status_code=status.HTTP_200_OK)
-def get_all_visits(db: SessionDep):
-    visits = db.execute(text(_visit_query())).fetchall()
+def get_all_visits(db: SessionDep, prison_id: int | None = None):
+    base_query = _visit_query()
+    if prison_id:
+        base_query += " WHERE i.assigned_prison = :prison_id"
+        visits = db.execute(text(base_query), {"prison_id": prison_id}).fetchall()
+    else:
+        visits = db.execute(text(base_query)).fetchall()
     return visits
 
 

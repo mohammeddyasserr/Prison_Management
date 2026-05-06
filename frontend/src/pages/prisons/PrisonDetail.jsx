@@ -14,9 +14,11 @@ export const PrisonDetail = () => {
   const toast = useToast();
 
   const fetchData = useCallback(() => {
+    const token = localStorage.getItem('userToken') || '';
+    const headers = { 'Authorization': `Bearer ${token}` };
     Promise.all([
-      fetch(`/api/prison/${id}`).then(r => r.json()),
-      fetch(`/api/prison/${id}/blocks-cells`).then(r => r.json()),
+      fetch(`/api/prison/${id}`, { headers }).then(r => r.json()),
+      fetch(`/api/prison/${id}/blocks-cells`, { headers }).then(r => r.json()),
     ]).then(([prisonData, blocksData]) => {
       setData({ prison: prisonData, blocks: blocksData });
       setLoading(false);
@@ -196,8 +198,8 @@ export const PrisonDetail = () => {
               <form onSubmit={addBlock} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                 <div style={{ flex: '1', minWidth: '200px' }}>
                   <label style={{ display: 'block', fontSize: '0.76rem', color: '#6a5742', marginBottom: '6px', fontWeight: 800, textTransform: 'uppercase' }}>Security Level</label>
-                  <select 
-                    value={blockForm.security_level} 
+                  <select
+                    value={blockForm.security_level}
                     onChange={(e) => setBlockForm((current) => ({ ...current, security_level: e.target.value }))}
                     className={styles.formSelect}
                   >

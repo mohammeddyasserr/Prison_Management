@@ -9,10 +9,31 @@ export const TransfersList = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/transfer')
-      .then(r => r.json())
-      .then(data => { setTransfers(data); setLoading(false); })
-      .catch(() => setLoading(false));
+    const fetchTransfers = async () => {
+      try {
+        const token = localStorage.getItem('userToken') || '';
+        const headers = { 'Authorization': `Bearer ${token}` };
+
+        if (hasRole('admin')) {
+          const res = await fetch('/api/transfer', { headers });
+          const data = await res.json();
+          setTransfers(Array.isArray(data) ? data : []);
+        } else if (hasRole('manager')) {
+          const prisonId = localStorage.getItem('prison_id') || '';
+          const res = await fetch(`/api/transfer/prison/${prisonId}`, { headers });
+          const data = await res.json();
+          setTransfers(Array.isArray(data) ? data : []);
+        } else {
+          setTransfers([]);
+        }
+      } catch (err) {
+        console.error('Error fetching transfers:', err);
+        setTransfers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTransfers();
   }, []);
 
   if (loading) return <div className={styles.emptyState}>Loading Transfer Requests...</div>;
@@ -21,8 +42,8 @@ export const TransfersList = () => {
     try {
       const status = action === 'approve' ? 'Approved' : 'Denied';
       const approval_date = new Date().toISOString().split('T')[0];
-      const endpoint = action === 'approve' 
-        ? `/api/transfer/${transferId}/accept` 
+      const endpoint = action === 'approve'
+        ? `/api/transfer/${transferId}/accept`
         : `/api/transfer/${transferId}/reject`;
 
       const response = await fetch(endpoint, {

@@ -9,7 +9,12 @@ export const VisitsList = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/visit')
+    const token = localStorage.getItem('userToken') || '';
+    const headers = { 'Authorization': `Bearer ${token}` };
+    const prisonId = localStorage.getItem('prison_id');
+
+    const url = prisonId ? `/api/visit?prison_id=${prisonId}` : '/api/visit';
+    fetch(url, { headers })
       .then(r => r.json())
       .then(data => { setVisits(data); setLoading(false); })
       .catch(() => setLoading(false));
@@ -29,7 +34,7 @@ export const VisitsList = () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('userToken')}`
         },
         body: JSON.stringify(action === 'reject' ? { denial_reason } : {})
       });

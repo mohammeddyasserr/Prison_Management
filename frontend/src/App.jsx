@@ -28,6 +28,7 @@ import { MedicalVisitForm } from './pages/healthcare/MedicalVisitForm';
 import { DoctorForm } from './pages/healthcare/DoctorForm';
 import { ShiftsList } from './pages/shifts/ShiftsList';
 import { MLPredictions } from './pages/ml/MLPredictions';
+import { MyPrison } from './pages/prisons/MyPrison';
 import { ToastProvider } from './context/ToastContext';
 
 const DashboardRedirect = () => {
@@ -51,9 +52,10 @@ function App() {
             <Route path="dashboard/manager" element={<ManagerDashboard />} />
             <Route path="dashboard/officer" element={<OfficerDashboard />} />
             
-            <Route path="prisons" element={<PrisonsList />} />
-            <Route path="prisons/add" element={<PrisonForm />} />
-            <Route path="prisons/:id" element={<PrisonDetail />} />
+             <Route path="prisons" element={<PrisonsList />} />
+             <Route path="prisons/my" element={<MyPrison />} />
+             <Route path="prisons/add" element={<PrisonForm />} />
+             <Route path="prisons/:id" element={<PrisonDetail />} />
             <Route path="prisons/:id/edit" element={<PrisonForm />} />
             <Route path="inmates" element={<InmatesList />} />
             <Route path="inmates/add" element={<InmateForm />} />

@@ -12,10 +12,9 @@ export const VisitSlots = () => {
   });
 
   useEffect(() => {
+    const token = localStorage.getItem('userToken') || '';
     fetch('/api/visit/timeslots', {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
+      headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(r => r.json())
       .then(data => { setSlots(data); setLoading(false); })

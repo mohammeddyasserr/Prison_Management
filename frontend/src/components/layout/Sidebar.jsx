@@ -51,7 +51,7 @@ const navItemsByRole = {
     {
       section: 'My Prison',
       items: [
-        { name: 'Prison Details', icon: Building2, path: '/prisons' },
+        { name: 'Prison Details', icon: Building2, path: '/prisons/my' },
         { name: 'Inmates', icon: UserRound, path: '/inmates' },
         { name: 'Officers', icon: UserCheck, path: '/officers' },
       ],

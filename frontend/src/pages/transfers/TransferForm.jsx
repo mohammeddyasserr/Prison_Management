@@ -16,17 +16,20 @@ export const TransferForm = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const prisonId = user.assigned_prison || 1;
+    const token = localStorage.getItem('userToken') || '';
+    const headers = { 'Authorization': `Bearer ${token}` };
+    const prisonId = localStorage.getItem('prison_id');
 
     Promise.all([
-      fetch('/api/inmates').then(r => r.json()).then(inmates => 
-        inmates.filter(i => String(i.assigned_prison) === String(prisonId))
-      ),
-      fetch('/api/prison').then(r => r.json()).then(prisons =>
-        prisons.filter(p => String(p.prison_id) !== String(prisonId))
-      ),
-    ]).then(([inmates, prisons]) => {
+      fetch('/api/inmates', { headers }).then(r => r.json()),
+      fetch('/api/prison', { headers }).then(r => r.json()),
+    ]).then(([allInmates, allPrisons]) => {
+      const inmates = prisonId
+        ? allInmates.filter(i => String(i.assigned_prison) === String(prisonId))
+        : allInmates;
+      const prisons = prisonId
+        ? allPrisons.filter(p => String(p.prison_id) !== String(prisonId))
+        : allPrisons;
       setData({ inmates, prisons });
       setLoading(false);
     }).catch(() => setLoading(false));

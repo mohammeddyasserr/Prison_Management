@@ -20,7 +20,17 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: 
     if not verify_password(form_data.password, user["password_hash"]):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
 
-    return {"access_token": user["national_id"], "token_type": "bearer", "role": user["role"], "name": user["name"]}
+    # Get prison_id for the user
+    prison_id = None
+    if user["role"] != "admin":
+        # For officers/managers, get their assigned prison
+        officer_prison = db.execute(text(
+            "SELECT prison_id FROM officer WHERE national_id = :nid"
+        ), {"nid": user["national_id"]}).fetchone()
+        if officer_prison:
+            prison_id = officer_prison[0]
+
+    return {"access_token": user["national_id"], "token_type": "bearer", "role": user["role"], "name": user["name"], "prison_id": prison_id}
 
 
 @router.post("/create_admin", status_code=status.HTTP_201_CREATED)

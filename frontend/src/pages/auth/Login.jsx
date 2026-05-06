@@ -31,6 +31,9 @@ export const Login = () => {
       localStorage.setItem('userToken', data.access_token);
       localStorage.setItem('userNationalId', data.access_token); // access_token IS the national_id in this simplified setup
       localStorage.setItem('userName', data.name || 'System User');
+      if (data.prison_id) {
+        localStorage.setItem('prison_id', data.prison_id);
+      }
 
       toast.success('Login Successful', `Welcome back, ${data.name || 'User'}`);
 

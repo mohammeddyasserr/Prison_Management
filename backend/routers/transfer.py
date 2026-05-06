@@ -9,6 +9,35 @@ router = APIRouter(
 )
 
 
+def _move_transfer_subject(db: SessionDep, inmate_id: int, destination_prison: int) -> None:
+    inmate_row = db.execute(text("""
+        SELECT inmate_id
+        FROM inmate
+        WHERE inmate_id = :inmate_id
+    """), {"inmate_id": inmate_id}).fetchone()
+
+    if inmate_row:
+        db.execute(text("""
+            UPDATE inmate
+            SET assigned_prison = :destination_prison,
+                assigned_cell = NULL
+            WHERE inmate_id = :inmate_id
+        """), {
+            "destination_prison": destination_prison,
+            "inmate_id": inmate_id,
+        })
+        return
+
+    db.execute(text("""
+        UPDATE pending_inmate
+        SET assigned_prison = :destination_prison
+        WHERE pending_inmate_id = :inmate_id
+    """), {
+        "destination_prison": destination_prison,
+        "inmate_id": inmate_id,
+    })
+
+
 def _transfer_query() -> str:
     return """
         SELECT 
@@ -100,17 +129,9 @@ def update_transfer(transfer_id: int, request: schemas.TransferUpdate, db: Sessi
         WHERE t.transfer_id = :transfer_id
     """), {"transfer_id": transfer_id}).fetchone()
 
-    # If approved, move the inmate to the destination prison
+    # If approved, move the inmate or pending inmate to the destination prison.
     if updates.get("status") == "Approved":
-        db.execute(text("""
-            UPDATE inmate
-            SET assigned_prison = :destination_prison,
-                assigned_cell = NULL
-            WHERE inmate_id = :inmate_id
-        """), {
-            "destination_prison": updated_transfer.destination_prison,
-            "inmate_id": updated_transfer.inmate_id
-        })
+        _move_transfer_subject(db, updated_transfer.inmate_id, updated_transfer.destination_prison)
         db.commit()
 
     return updated_transfer
@@ -196,6 +217,8 @@ def accept_transfer(transfer_id: int, request: schemas.TransferUpdate, db: Sessi
         db.execute(text("""
             DELETE FROM inmate WHERE inmate_id = :inmate_id
         """), {"inmate_id": inmate_id})
+    else:
+        _move_transfer_subject(db, inmate_id, destination_prison)
 
     db.commit()
 
@@ -239,3 +262,11 @@ def reject_transfer(transfer_id: int, request: schemas.TransferUpdate, db: Sessi
     """), {"transfer_id": transfer_id}).fetchone()
 
     return updated_transfer
+
+@router.get("/prison/{prison_id}", response_model=list[schemas.TransferResponse], status_code=status.HTTP_200_OK)
+def get_transfers_by_prison(prison_id: int, db: SessionDep):
+    transfers = db.execute(text(f"""
+        {_transfer_query()}
+        WHERE t.requesting_prison = :prison_id OR t.destination_prison = :prison_id
+    """), {"prison_id": prison_id}).fetchall()
+    return transfers

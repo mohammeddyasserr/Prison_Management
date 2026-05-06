@@ -24,3 +24,4 @@ class PendingInmateResponse(SQLModel):
     education_level: str
     assigned_prison: int | None = None
     prison_name: str | None = None
+

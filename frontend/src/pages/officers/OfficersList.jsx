@@ -9,10 +9,31 @@ export const OfficersList = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/staff')
-      .then(r => r.json())
-      .then(data => { setOfficers(data); setLoading(false); })
-      .catch(() => setLoading(false));
+    const fetchStaff = async () => {
+      try {
+        const token = localStorage.getItem('userToken') || '';
+        const headers = { 'Authorization': `Bearer ${token}` };
+
+        if (hasRole('admin')) {
+          const res = await fetch('/api/staff', { headers });
+          const data = await res.json();
+          setOfficers(Array.isArray(data) ? data : []);
+        } else if (hasRole('manager')) {
+          const prisonId = localStorage.getItem('prison_id') || '';
+          const res = await fetch(`/api/staff/prison/${prisonId}`, { headers });
+          const data = await res.json();
+          setOfficers(Array.isArray(data) ? data : []);
+        } else {
+          setOfficers([]);
+        }
+      } catch (err) {
+        console.error('Error fetching staff:', err);
+        setOfficers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStaff();
   }, []);
 
   if (loading) return <div className={styles.emptyState}>Loading Staff Records...</div>;
@@ -32,21 +53,21 @@ export const OfficersList = () => {
         {[0, 1, 2].map((bar) => <div key={bar} className={styles.bar} />)}
       </div>
 
-       <div className={styles.prisonContent}>
-         <header className={styles.prisonHeader}>
-           <h1 className={styles.prisonTitle}>Staff Management</h1>
-         </header>
+      <div className={styles.prisonContent}>
+        <header className={styles.prisonHeader}>
+          <h1 className={styles.prisonTitle}>Staff Management</h1>
+        </header>
 
-         {hasRole('admin') && (
-           <div style={{ textAlign: 'right', marginBottom: '20px' }}>
-             <Link to="/officers/add" className={`${styles.btn} ${styles.btnPrimary}`}>
-               <Plus size={16} /> Add Staff
-             </Link>
-           </div>
-         )}
+        {hasRole('admin') && (
+          <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+            <Link to="/officers/add" className={`${styles.btn} ${styles.btnPrimary}`}>
+              <Plus size={16} /> Add Staff
+            </Link>
+          </div>
+        )}
 
-         <div className={styles.ledger}>
-           <div className={styles.ledgerTitle}>Registered Staff</div>
+        <div className={styles.ledger}>
+          <div className={styles.ledgerTitle}>Registered Staff</div>
           <div className={styles.tableWrapper}>
             <table className={styles.table}>
               <thead>

@@ -9,10 +9,40 @@ export const PrisonsList = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/prison')
-      .then(r => r.json())
-      .then(data => { setPrisons(data); setLoading(false); })
-      .catch(() => setLoading(false));
+    const fetchPrisons = async () => {
+      try {
+        const token = localStorage.getItem('userToken') || '';
+        const headers = { 'Authorization': `Bearer ${token}` };
+        if (hasRole('admin')) {
+          const res = await fetch('/api/prison', { headers });
+          const data = await res.json();
+          setPrisons(Array.isArray(data) ? data : [data]);
+        } else {
+          // For managers/officers, fetch all prisons and filter by manager_id
+          const res = await fetch('/api/prison', { headers });
+          const data = await res.json();
+          const allPrisons = Array.isArray(data) ? data : [data];
+          const nationalId = localStorage.getItem('userNationalId') || '';
+          const myPrison = allPrisons.filter(
+            p => p.manager_id === nationalId || p.manager_name
+          );
+          // If manager has a prison assigned via manager_id
+          const managerPrison = allPrisons.find(p => p.manager_id === nationalId);
+          if (managerPrison) {
+            setPrisons([managerPrison]);
+          } else {
+            // Show all prisons the user might be associated with
+            setPrisons(myPrison.length > 0 ? myPrison : allPrisons);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching prisons:', err);
+        setPrisons([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPrisons();
   }, []);
 
   if (loading) return <div className={styles.emptyState}>Loading Prisons...</div>;
@@ -32,21 +62,21 @@ export const PrisonsList = () => {
         {[0, 1, 2].map((bar) => <div key={bar} className={styles.bar} />)}
       </div>
 
-       <div className={styles.prisonContent}>
-         <header className={styles.prisonHeader}>
-           <h1 className={styles.prisonTitle}>Prison Facilities</h1>
-         </header>
+      <div className={styles.prisonContent}>
+        <header className={styles.prisonHeader}>
+          <h1 className={styles.prisonTitle}>Prison Facilities</h1>
+        </header>
 
-         {hasRole('admin') && (
-           <div style={{ textAlign: 'right', marginBottom: '20px' }}>
-             <Link to="/prisons/add" className={`${styles.btn} ${styles.btnPrimary}`}>
-               <Plus size={16} /> Add Prison
-             </Link>
-           </div>
-         )}
+        {hasRole('admin') && (
+          <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+            <Link to="/prisons/add" className={`${styles.btn} ${styles.btnPrimary}`}>
+              <Plus size={16} /> Add Prison
+            </Link>
+          </div>
+        )}
 
-         <div className={styles.ledger}>
-           <div className={styles.ledgerTitle}>Registered Facilities</div>
+        <div className={styles.ledger}>
+          <div className={styles.ledgerTitle}>Registered Facilities</div>
           <div className={styles.tableWrapper}>
             <table className={styles.table}>
               <thead>

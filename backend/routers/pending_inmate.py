@@ -77,3 +77,4 @@ def delete_pending_inmate(pending_inmate_id: int, db: SessionDep):
     db.execute(text("DELETE FROM pending_inmate WHERE pending_inmate_id = :pending_inmate_id"), {"pending_inmate_id": pending_inmate_id})
     db.commit()
     return None
+

@@ -16,6 +16,7 @@ export const logout = () => {
   localStorage.removeItem('userName');
   localStorage.removeItem('userToken');
   localStorage.removeItem('userNationalId');
+  localStorage.removeItem('prison_id');
   window.location.href = '/login';
 };
 

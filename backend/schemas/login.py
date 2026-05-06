@@ -9,6 +9,7 @@ class Token(BaseModel):
     token_type: str
     role: str
     name: str = ""
+    prison_id: int | None = None
 
 class SuperAdminCreate(BaseModel):
     national_id: str
