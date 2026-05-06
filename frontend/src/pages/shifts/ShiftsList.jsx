@@ -16,18 +16,34 @@ export const ShiftsList = () => {
   });
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/shift').then(r => r.json()),
-      fetch('/api/staff').then(r => r.json()),
-    ]).then(([shifts, officers]) => {
-      // Extract unique blocks from shifts for the dropdown
-      const blocksMap = {};
-      shifts.forEach(s => {
-        if (s.block_id) blocksMap[s.block_id] = { block_id: s.block_id, name: s.block_name || `Block ${s.block_id}` };
-      });
-      setData({ shifts, officers, blocks: Object.values(blocksMap) });
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    const fetchData = async () => {
+      try {
+        const [shifts, officers, prisons] = await Promise.all([
+          fetch('/api/shift').then(r => r.json()),
+          fetch('/api/staff').then(r => r.json()),
+          fetch('/api/prison').then(r => r.json()),
+        ]);
+
+        // If manager/officer, we might want to filter or just get their prison's blocks
+        // For simplicity and since it's an admin-like view, let's fetch all blocks from all prisons
+        const allBlocks = await Promise.all(
+          prisons.map(p => fetch(`/api/prison/${p.prison_id}/blocks-cells`).then(r => r.json()))
+        );
+        
+        const flattenedBlocks = allBlocks.flat().map(b => ({
+          block_id: b.block_id,
+          name: `Block ${b.block_id} (${b.security_level})`
+        }));
+
+        setData({ shifts, officers, blocks: flattenedBlocks });
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Shift Schedule...</div>;
 
@@ -39,7 +55,23 @@ export const ShiftsList = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await postForm('/shifts/add', formData);
+      const payload = {
+        ...formData,
+        block_id: parseInt(formData.block_id, 10),
+        manager_id: localStorage.getItem('userNationalId') || 'System'
+      };
+
+      const response = await fetch('/api/shift', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Assignment Failed');
+      }
+
       const newShift = await response.json();
       
       setData(prev => ({
@@ -56,13 +88,19 @@ export const ShiftsList = () => {
       
       toast.success('Shift Assigned', 'The shift has been successfully assigned to the officer.');
     } catch (err) {
-      toast.error('Assignment Failed', 'There was an error assigning the shift. Please try again.');
+      toast.error('Assignment Failed', err.message || 'There was an error assigning the shift.');
     }
   };
 
   const removeShift = async (shiftId) => {
+    if (!window.confirm('Are you sure you want to remove this shift assignment?')) return;
     try {
-      await postForm(`/shifts/${shiftId}/delete`, {});
+      const response = await fetch(`/api/shift/${shiftId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) throw new Error('Delete failed');
+
       setData((current) => ({
         ...current,
         shifts: current.shifts.filter((shift) => shift.shift_id !== shiftId),
@@ -77,7 +115,7 @@ export const ShiftsList = () => {
     <div className={styles.container}>
       <h1 className={styles.title}>Shift Management</h1>
 
-      {hasRole('manager') && (
+      {(hasRole('manager') || hasRole('admin')) && (
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px', marginBottom: '24px', maxWidth: '100%' }}>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px' }}>Assign Shift</h2>
           <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
@@ -137,11 +175,11 @@ export const ShiftsList = () => {
                 <tr key={s.shift_id}>
                   <td>{s.shift_id}</td>
                   {!hasRole('officer') && <td>{s.officer_name || '—'}</td>}
-                  <td>{s.block_name}</td>
+                  <td>Block {s.block_id}</td>
                   {hasRole('admin') && <td>{s.prison_name || '—'}</td>}
                   <td><span className={`${styles.badge} ${styles.badgeInfo}`}>{s.shift_type}</span></td>
                   <td>{s.date}</td>
-                  <td>{s.start_time} — {s.end_time}</td>
+                  <td>{s.time_range}</td>
                   {hasRole('manager') && (
                     <td className={styles.actions}>
                       <button className={`${styles.btn} ${styles.badgeDanger}`} style={{ border: 'none', cursor: 'pointer' }} onClick={() => removeShift(s.shift_id)}>

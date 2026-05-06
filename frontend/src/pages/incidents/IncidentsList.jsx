@@ -46,9 +46,9 @@ export const IncidentsList = () => {
               <tr key={inc.incident_id}>
                 <td>{inc.incident_id}</td>
                 <td><span className={`${styles.badge} ${styles.badgeDanger}`}>{inc.type}</span></td>
-                <td>{inc.date_time}</td>
+                <td>{new Date(inc.occurred_at).toLocaleString()}</td>
                 <td>{inc.prison_name || '—'}</td>
-                <td>{inc.block_name || '—'}</td>
+                <td>{inc.block_id || '—'}</td>
                 <td>{inc.officer_name || '—'}</td>
                 <td>
                   <Link to={`/incidents/${inc.incident_id}`} className={`${styles.btn} ${styles.btnOutline}`}>

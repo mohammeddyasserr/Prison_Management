@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { postForm } from '../../services/authentication';
+
 import { useToast } from '../../context/ToastContext';
 
 export const DoctorForm = () => {
@@ -32,11 +32,26 @@ export const DoctorForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await postForm('/healthcare/doctors/add', formData);
+      const payload = {
+        ...formData,
+        prison_id: parseInt(formData.prison_id, 10)
+      };
+
+      const response = await fetch('/api/doctor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Registration Failed');
+      }
+
       toast.success('Doctor Registered', `Dr. ${formData.name} has been added to the healthcare system.`);
       navigate('/healthcare');
     } catch (err) {
-      toast.error('Registration Failed', 'There was an error registering the doctor.');
+      toast.error('Registration Failed', err.message || 'There was an error registering the doctor.');
     }
   };
 

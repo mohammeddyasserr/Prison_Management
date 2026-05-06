@@ -45,11 +45,11 @@ export const IncidentDetail = () => {
           <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Type:</span><br />
             <span className={`${styles.badge} ${styles.badgeDanger}`}>{incident.type}</span>
           </div>
-          <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Date/Time:</span><br />{incident.date_time}</div>
-          <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Prison:</span><br />{incident.prison?.name || '—'}</div>
-          <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Block:</span><br />{incident.block?.name || '—'}</div>
+          <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Date/Time:</span><br />{new Date(incident.occurred_at).toLocaleString()}</div>
+          <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Prison:</span><br />{incident.prison_name || '—'}</div>
+          <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Block:</span><br />{incident.block_id || '—'}</div>
           <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Cell:</span><br />{incident.cell_id ? `#${incident.cell_id}` : '—'}</div>
-          <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Reporting Officer:</span><br />{incident.officer?.name || '—'}</div>
+          <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Reporting Officer:</span><br />{incident.officer_name || '—'}</div>
         </div>
       </div>
 
@@ -124,9 +124,9 @@ export const IncidentDetail = () => {
                   <tr key={i}>
                     <td>{d.inmate_name}</td>
                     <td>{d.punishment_type}</td>
-                    <td>{d.solitary_confinement_duration ? `${d.solitary_confinement_duration} days` : '—'}</td>
+                    <td>{d.solitary_days ? `${d.solitary_days} days` : '—'}</td>
                     <td>{d.date_imposed}</td>
-                    <td>{d.imposed_by_name}</td>
+                    <td>{d.officer_name}</td>
                     <td style={{ fontSize: '0.8rem' }}>{d.notes || '—'}</td>
                   </tr>
                 ))}

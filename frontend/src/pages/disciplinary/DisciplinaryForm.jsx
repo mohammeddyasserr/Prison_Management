@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { postForm } from '../../services/authentication';
+
 import { useToast } from '../../context/ToastContext';
 
 export const DisciplinaryForm = () => {
@@ -11,20 +11,21 @@ export const DisciplinaryForm = () => {
     inmate_id: '',
     incident_id: '',
     punishment_type: 'Loss of Privileges',
-    solitary_confinement_duration: 0,
+    solitary_days: 0,
     date_imposed: '',
-    end_date: '',
+    imposed_by: '',
     notes: ''
   });
-  const [data, setData] = useState({ inmates: [], incidents: [] });
+  const [data, setData] = useState({ inmates: [], incidents: [], staff: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       fetch('/api/inmates').then(r => r.json()),
       fetch('/api/incidents').then(r => r.json()),
-    ]).then(([inmates, incidents]) => {
-      setData({ inmates, incidents });
+      fetch('/api/staff').then(r => r.json()),
+    ]).then(([inmates, incidents, staff]) => {
+      setData({ inmates, incidents, staff });
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -37,7 +38,37 @@ export const DisciplinaryForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await postForm('/disciplinary/add', formData);
+      if (!formData.inmate_id) {
+        toast.error('Validation Error', 'Please select an inmate.');
+        return;
+      }
+      if (!formData.date_imposed) {
+        toast.error('Validation Error', 'Please select a date.');
+        return;
+      }
+      if (!formData.imposed_by) {
+        toast.error('Validation Error', 'Please select the imposing officer.');
+        return;
+      }
+      
+      const payload = {
+        ...formData,
+        inmate_id: parseInt(formData.inmate_id, 10),
+        incident_id: formData.incident_id ? parseInt(formData.incident_id, 10) : null,
+        solitary_days: formData.solitary_days ? parseInt(formData.solitary_days, 10) : null,
+        imposed_by: formData.imposed_by
+      };
+      const response = await fetch('/api/disciplinary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const responseBody = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.error('API Error:', responseBody);
+        throw new Error(responseBody.detail || 'Submission Failed');
+      }
+
       toast.success('Record Added', 'The disciplinary action has been recorded.');
       navigate('/disciplinary');
     } catch (err) {
@@ -69,7 +100,7 @@ export const DisciplinaryForm = () => {
               <option value="">— No linked incident —</option>
               {data.incidents.map(inc => (
                 <option key={inc.incident_id} value={inc.incident_id}>
-                  #{inc.incident_id} — {inc.type} ({inc.date_time})
+                  #{inc.incident_id} — {inc.type} ({new Date(inc.occurred_at).toLocaleString()})
                 </option>
               ))}
             </select>
@@ -78,24 +109,28 @@ export const DisciplinaryForm = () => {
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Punishment Type *</label>
             <select name="punishment_type" value={formData.punishment_type} onChange={handleChange} required className={styles.formControl}>
-              {['Loss of Privileges', 'Solitary Confinement', 'Transfer to High-Security', 'Restricted Visits', 'Extra Labor', 'Other'].map(t => <option key={t}>{t}</option>)}
+              {['Loss of Privileges', 'Solitary Confinement', 'Transfer to High-Security', 'Other'].map(t => <option key={t}>{t}</option>)}
             </select>
           </div>
 
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Solitary Confinement Duration (days, max 30)</label>
-            <input type="number" name="solitary_confinement_duration" value={formData.solitary_confinement_duration} onChange={handleChange} min="0" max="30" className={styles.formControl} />
+            <input type="number" name="solitary_days" value={formData.solitary_days} onChange={handleChange} min="0" max="30" className={styles.formControl} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Date Imposed *</label>
-              <input type="date" name="date_imposed" value={formData.date_imposed} onChange={handleChange} required className={styles.formControl} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>End Date</label>
-              <input type="date" name="end_date" value={formData.end_date} onChange={handleChange} className={styles.formControl} />
-            </div>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Date Imposed *</label>
+            <input type="date" name="date_imposed" value={formData.date_imposed} onChange={handleChange} required className={styles.formControl} />
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Imposed By (Officer) *</label>
+            <select name="imposed_by" value={formData.imposed_by} onChange={handleChange} required className={styles.formControl}>
+              <option value="">— Select Officer —</option>
+              {data.staff.map(s => (
+                <option key={s.national_id} value={s.national_id}>{s.name} ({s.role})</option>
+              ))}
+            </select>
           </div>
 
           <div style={{ marginBottom: '32px' }}>

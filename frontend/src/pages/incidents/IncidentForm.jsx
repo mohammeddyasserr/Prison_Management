@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { postForm } from '../../services/authentication';
+
 import { useToast } from '../../context/ToastContext';
 
 export const IncidentForm = () => {
@@ -16,7 +16,8 @@ export const IncidentForm = () => {
     action_taken: '',
     inmate_ids: [],
     staff_ids: [],
-    witness_ids: []
+    witness_ids: [],
+    reporting_officer: ''
   });
   const [data, setData] = useState({ blocks: [], inmates: [], staff: [] });
   const [loading, setLoading] = useState(true);
@@ -55,7 +56,32 @@ export const IncidentForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await postForm('/incidents/add', formData);
+      if (!formData.reporting_officer) {
+        toast.error('Validation Error', 'Please select a reporting officer.');
+        return;
+      }
+      
+      const payload = {
+        type: formData.type,
+        block_id: formData.block_id ? parseInt(formData.block_id, 10) : null,
+        occurred_at: formData.date_time,
+        reporting_officer: formData.reporting_officer,
+        description: formData.description,
+        action_taken: formData.action_taken,
+        involved_inmate_ids: formData.inmate_ids.map(id => parseInt(id, 10))
+      };
+
+      const response = await fetch('/api/incidents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const responseBody = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.error('API Error:', responseBody);
+        throw new Error(responseBody.detail || 'Submission Failed');
+      }
       toast.success('Incident Reported', 'The incident report has been successfully filed.');
       navigate('/incidents');
     } catch (err) {
@@ -85,12 +111,22 @@ export const IncidentForm = () => {
             </div>
           </div>
 
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Reporting Officer *</label>
+            <select name="reporting_officer" value={formData.reporting_officer} onChange={handleChange} required className={styles.formControl}>
+              <option value="">— Select Reporting Officer —</option>
+              {data.staff.map(s => (
+                <option key={s.national_id} value={s.national_id}>{s.name} ({s.role})</option>
+              ))}
+            </select>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Block</label>
               <select name="block_id" value={formData.block_id} onChange={handleChange} className={styles.formControl}>
                 <option value="">— Select —</option>
-                {data.blocks.map(b => <option key={b.block_id} value={b.block_id}>{b.name}</option>)}
+                {data.blocks.map(b => <option key={b.block_id} value={b.block_id}>Block {b.block_id}</option>)}
               </select>
             </div>
             <div>

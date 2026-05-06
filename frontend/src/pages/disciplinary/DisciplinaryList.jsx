@@ -36,7 +36,7 @@ export const DisciplinaryList = () => {
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>Log ID</th>
+
               <th>Incident</th>
               <th>Inmate</th>
               <th>Punishment</th>
@@ -49,8 +49,7 @@ export const DisciplinaryList = () => {
           </thead>
           <tbody>
             {logs.length > 0 ? logs.map((log) => (
-              <tr key={log.log_id}>
-                <td>{log.log_id}</td>
+              <tr key={`${log.inmate_id}-${log.imposed_by}-${log.incident_id}`}>
                 <td>
                   {log.incident_id
                     ? <Link to={`/incidents/${log.incident_id}`} className={`${styles.btn} ${styles.btnOutline}`} style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
@@ -60,15 +59,15 @@ export const DisciplinaryList = () => {
                 </td>
                 <td>{log.inmate_name}</td>
                 <td>{log.punishment_type}</td>
-                <td>{log.solitary_confinement_duration || '—'}</td>
+                <td>{log.solitary_days || '—'}</td>
                 <td>{log.date_imposed}</td>
                 <td>{log.end_date || '—'}</td>
-                <td>{log.imposed_by_name || '—'}</td>
+                <td>{log.officer_name || '—'}</td>
                 <td style={{ fontSize: '0.8rem', maxWidth: '200px' }}>{log.notes || '—'}</td>
               </tr>
             )) : (
               <tr>
-                <td colSpan="9" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
+                <td colSpan="8" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
                   No disciplinary records found.
                 </td>
               </tr>

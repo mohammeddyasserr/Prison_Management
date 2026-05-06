@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../EntityStyles.module.css';
-import { postForm } from '../../services/authentication';
+
 import { useToast } from '../../context/ToastContext';
 
 export const MedicalVisitForm = () => {
@@ -35,11 +35,28 @@ export const MedicalVisitForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await postForm('/healthcare/visits/add', formData);
+      const payload = {
+        inmate_id: parseInt(formData.inmate_id, 10),
+        doctor_id: formData.doctor_id,
+        visit_datetime: formData.date_time,
+        diagnosis: formData.diagnosis
+      };
+
+      const response = await fetch('/api/medical-visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Recording Failed');
+      }
+
       toast.success('Visit Recorded', 'The medical visit has been successfully logged.');
       navigate('/healthcare');
     } catch (err) {
-      toast.error('Recording Failed', 'There was an error logging the medical visit.');
+      toast.error('Recording Failed', err.message || 'There was an error logging the medical visit.');
     }
   };
 

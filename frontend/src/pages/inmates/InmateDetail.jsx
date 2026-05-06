@@ -99,7 +99,7 @@ export const InmateDetail = () => {
               <tbody>
                 {incidents.map((inc, i) => (
                   <tr key={i}>
-                    <td>{inc.date_time}</td>
+                    <td>{new Date(inc.occurred_at).toLocaleString()}</td>
                     <td><span className={`${styles.badge} ${styles.badgeDanger}`}>{inc.type}</span></td>
                     <td>{inc.action_taken || '—'}</td>
                   </tr>
@@ -124,7 +124,7 @@ export const InmateDetail = () => {
                   <tr key={i}>
                     <td>{d.date_imposed}</td>
                     <td>{d.punishment_type}</td>
-                    <td>{d.solitary_confinement_duration ? `${d.solitary_confinement_duration} days` : '—'}</td>
+                    <td>{d.solitary_days ? `${d.solitary_days} days` : '—'}</td>
                     <td>{d.notes || '—'}</td>
                   </tr>
                 ))}

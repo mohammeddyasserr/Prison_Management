@@ -11,7 +11,7 @@ export const HealthcareOverview = () => {
   useEffect(() => {
     Promise.all([
       fetch('/api/doctor').then(r => r.json()),
-      fetch('/api/medical_visit').then(r => r.json()),
+      fetch('/api/medical-visit').then(r => r.json()),
     ]).then(([doctors, visits]) => {
       setData({ doctors, visits });
       setLoading(false);
@@ -68,19 +68,18 @@ export const HealthcareOverview = () => {
         </h2>
         <div className={styles.tableWrapper}>
           <table className={styles.table}>
-            <thead><tr><th>ID</th><th>Inmate</th><th>Doctor</th><th>Date/Time</th><th>Diagnosis</th><th>Notes</th></tr></thead>
+            <thead><tr><th>ID</th><th>Inmate</th><th>Doctor</th><th>Date/Time</th><th>Diagnosis</th></tr></thead>
             <tbody>
               {data.visits.length > 0 ? data.visits.map((v) => (
                 <tr key={v.visit_id}>
                   <td>{v.visit_id}</td>
                   <td>{v.inmate_name}</td>
                   <td>{v.doctor_name}</td>
-                  <td>{v.date_time}</td>
+                  <td>{new Date(v.visit_datetime).toLocaleString()}</td>
                   <td>{v.diagnosis || '—'}</td>
-                  <td style={{ fontSize: '0.8rem', maxWidth: '300px' }}>{v.description || '—'}</td>
                 </tr>
               )) : (
-                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No medical visits recorded.</td></tr>
+                <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No medical visits recorded.</td></tr>
               )}
             </tbody>
           </table>
