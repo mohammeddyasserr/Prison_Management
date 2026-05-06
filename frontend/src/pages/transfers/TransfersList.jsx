@@ -23,12 +23,15 @@ export const TransfersList = () => {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       
       const approval_date = new Date().toISOString().split('T')[0];
-      const response = await fetch(`/api/transfer/${transferId}`, {
+      const endpoint = action === 'approve' 
+        ? `/api/transfer/${transferId}/accept` 
+        : `/api/transfer/${transferId}/reject`;
+
+      const response = await fetch(endpoint, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status,
-          approved_by: Number(user.user_id),
+          approved_by: Number(localStorage.getItem('userNationalId') || 0),
           approval_date
         })
       });

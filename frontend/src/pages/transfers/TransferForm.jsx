@@ -16,9 +16,16 @@ export const TransferForm = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const prisonId = user.assigned_prison || 1; // Fallback or current prison context
+
     Promise.all([
-      fetch('/api/inmates').then(r => r.json()),
-      fetch('/api/prison').then(r => r.json()),
+      fetch('/api/inmates').then(r => r.json()).then(inmates => 
+        inmates.filter(i => String(i.assigned_prison) === String(prisonId))
+      ),
+      fetch('/api/prison').then(r => r.json()).then(prisons =>
+        prisons.filter(p => String(p.prison_id) !== String(prisonId))
+      ),
     ]).then(([inmates, prisons]) => {
       setData({ inmates, prisons });
       setLoading(false);
@@ -41,7 +48,7 @@ export const TransferForm = () => {
         destination_prison: Number(formData.destination_prison),
         reason: formData.reason,
         requesting_prison: Number(inmate?.assigned_prison || 0),
-        manager_id: Number(user.user_id || 0)
+        manager_id: Number(localStorage.getItem('userNationalId') || 0)
       };
 
       const response = await fetch('/api/transfer', {
@@ -55,6 +62,7 @@ export const TransferForm = () => {
       toast.success('Request Submitted', 'The inter-prison transfer request has been submitted for review.');
       navigate('/transfers');
     } catch (err) {
+      console.error(err);
       toast.error('Submission Failed', 'There was an error submitting the transfer request. Please try again.');
     }
   };

@@ -1,5 +1,5 @@
 CREATE TABLE pending_inmate (
-    pending_inmate_id       INTEGER         PRIMARY KEY,    -- system-generated
+    pending_inmate_id       INTEGER         PRIMARY KEY,    -- Keeps the inmate_id
     national_id             VARCHAR(14)     NOT NULL UNIQUE,
     full_name               VARCHAR(100)    NOT NULL,
     date_of_birth           DATE            NOT NULL,
