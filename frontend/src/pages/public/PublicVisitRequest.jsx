@@ -477,5 +477,4 @@ export const PublicVisitRequest = () => {
       </div>
     </div>
   );
-
 };

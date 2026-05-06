@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Eye, TrendingUp, ShieldAlert, RotateCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import styles from '../EntityStyles.module.css';
+import styles from '../PrisonStyles.module.css';
 
 export const MLPredictions = () => {
   const [data, setData] = useState({ risk_scores: [], overcrowding: [], recidivism_scores: [] });
@@ -56,8 +56,11 @@ export const MLPredictions = () => {
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading ML Predictions...</div>;
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>ML Predictions</h1>
+    <div className={styles.prisonContainer}>
+      <div className={styles.prisonHeader}>
+        <h1 className={styles.prisonTitle}>ML Predictions</h1>
+        <p className={styles.prisonSubtitle}>AI-powered insights for prison management</p>
+      </div>
 
       <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px', marginBottom: '24px' }}>
         <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>

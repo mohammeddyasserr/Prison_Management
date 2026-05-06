@@ -1,75 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Special+Elite&display=swap');
+
 .card {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 24px 20px;
-  transition: background-color 0.2s, transform 0.2s;
+  position: relative;
   display: flex;
+  min-height: 160px;
   flex-direction: column;
   gap: 14px;
+  padding: 19px 17px 17px;
+  color: #2c1a0e;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent 34%),
+    linear-gradient(135deg, #f6f1e8 0%, #ede4ce 45%, #e7dfc6 100%);
+  box-shadow:
+    0 5px 24px rgba(0, 0, 0, 0.62),
+    0 1px 4px rgba(0, 0, 0, 0.36),
+    inset 0 0 30px rgba(0, 0, 0, 0.04);
+  transition: transform 0.18s ease, filter 0.18s ease;
+}
+
+.card::before {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  content: "";
+  transform: translateX(-50%);
+  background: radial-gradient(circle at 35% 35%, #c0392b 0%, #760000 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.card::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(90deg, transparent, rgba(111, 85, 50, 0.045) 47%, transparent 49%),
+    repeating-linear-gradient(to bottom, transparent 0 22px, rgba(85, 65, 42, 0.04) 22px 23px);
 }
 
 .card:hover {
-  background-color: var(--bg-card-hover);
-  transform: translateY(-2px);
+  filter: brightness(1.03);
+  transform: translateY(-2px) rotate(-0.2deg);
+}
+
+.card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .title {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-secondary);
-  font-weight: 600;
   margin: 0;
+  color: #6b5842;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08rem;
+  line-height: 1.35;
+  text-transform: uppercase;
 }
 
 .value {
-  font-size: 2.25rem;
-  font-weight: 700;
-  color: var(--text-primary);
   margin: 0;
+  color: #2c1a0e;
+  font-family: 'Share Tech Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: clamp(1.8rem, 4vw, 2.35rem);
+  font-weight: 900;
   line-height: 1;
   text-align: left;
+  overflow-wrap: anywhere;
 }
 
 .iconWrapper {
   display: flex;
+  width: 42px;
+  height: 42px;
   align-items: center;
   justify-content: center;
-  opacity: 0.8;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: color-mix(in srgb, currentColor 10%, transparent);
+  color: #7a0000;
+  border: 1px solid rgba(122, 0, 0, 0.18);
+  background: rgba(122, 0, 0, 0.08);
 }
 
 .header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 14px;
 }
 
 .titleWrapper {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 10px;
-  min-width: 0;
 }
 
 .trendInline {
   display: inline-flex;
+  width: fit-content;
   align-items: center;
   gap: 6px;
-  width: fit-content;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: var(--trend-bg);
+  padding: 6px 9px;
   color: var(--trend-color);
+  border: 1px solid color-mix(in srgb, var(--trend-color) 26%, transparent);
+  background: var(--trend-bg);
   font-size: 0.78rem;
-  font-weight: 600;
-  line-height: 1;
+  font-weight: 900;
   font-variant-numeric: tabular-nums;
+  line-height: 1;
   white-space: nowrap;
 }
 

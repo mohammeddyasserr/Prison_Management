@@ -8,6 +8,7 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     role: str
+    name: str = ""
 
 class SuperAdminCreate(BaseModel):
     national_id: str
