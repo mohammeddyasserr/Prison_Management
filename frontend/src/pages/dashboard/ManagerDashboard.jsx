@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Users, AlertTriangle, Clock, Activity, ArrowRightLeft } from 'lucide-react';
+import { Users, AlertTriangle, Clock, Activity, ArrowRightLeft, Check, X } from 'lucide-react';
 import { KPICard } from '../../components/dashboard/KPICard';
 import styles from './DashboardStyles.module.css';
 
@@ -59,7 +59,7 @@ export const ManagerDashboard = () => {
     return styles.green;
   };
 
-  const handleVisitAction = (visitId, action) => {
+  const handleVisitAction = (visitId) => {
     setData((current) => ({
       ...current,
       pending_visits: (current.pending_visits || []).filter((v) => v.visit_id !== visitId),
@@ -70,7 +70,7 @@ export const ManagerDashboard = () => {
     <div className={styles.dashboard}>
       <div className={styles.header}>
         <h1 className={styles.title}>Prison Manager Dashboard</h1>
-        <p className={styles.subtitle}>{prison.name} — Facility Operations</p>
+        <p className={styles.subtitle}>{prison.name} - Facility Operations</p>
       </div>
 
       <div className={styles.kpiGrid}>
@@ -88,7 +88,7 @@ export const ManagerDashboard = () => {
             <div key={i} className={styles.blockItem}>
               <div className={styles.labelRow}>
                 <span>{block.name} ({block.security_level})</span>
-                <span className={`${styles.rateValue} ${rateClass}`}>{block.current_occupancy}/{block.capacity} — {block.occupancy_rate}%</span>
+                <span className={`${styles.rateValue} ${rateClass}`}>{block.current_occupancy}/{block.capacity} - {block.occupancy_rate}%</span>
               </div>
               <div className={styles.occupancyBar}>
                 <div className={`${styles.occupancyFill} ${rateClass}`} style={{ width: `${block.occupancy_rate}%` }} />
@@ -117,8 +117,12 @@ export const ManagerDashboard = () => {
                       </td>
                       <td>{v.visit_date}</td>
                       <td className={styles.actions}>
-                        <button className={`${styles.btn} ${styles.btnSuccess}`} onClick={() => handleVisitAction(v.visit_id, 'approve')}>✓</button>
-                        <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => handleVisitAction(v.visit_id, 'deny')}>✗</button>
+                        <button className={`${styles.btn} ${styles.btnSuccess}`} onClick={() => handleVisitAction(v.visit_id)} aria-label="Approve visit">
+                          <Check size={16} />
+                        </button>
+                        <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => handleVisitAction(v.visit_id)} aria-label="Deny visit">
+                          <X size={16} />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -166,7 +170,7 @@ export const ManagerDashboard = () => {
                       </span>
                     </td>
                     <td>{v.visit_date}</td>
-                    <td>{v.time_slot || '—'}</td>
+                    <td>{v.time_slot || '-'}</td>
                     <td><span className={`${styles.badge} ${styles.badgeSuccess}`}>Approved</span></td>
                   </tr>
                 ))}
@@ -189,7 +193,7 @@ export const ManagerDashboard = () => {
                     <td><span className={`${styles.badge} ${styles.badgeDanger}`}>{inc.type}</span></td>
                     <td>{inc.block_name}</td>
                     <td style={{ fontSize: '0.8rem' }}>{inc.date_time}</td>
-                    <td style={{ fontSize: '0.8rem' }}>{inc.action_taken || '—'}</td>
+                    <td style={{ fontSize: '0.8rem' }}>{inc.action_taken || '-'}</td>
                   </tr>
                 ))}
               </tbody>

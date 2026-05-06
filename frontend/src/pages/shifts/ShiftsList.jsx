@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Trash2, Calendar } from 'lucide-react';
-import styles from '../EntityStyles.module.css';
+import styles from '../PrisonStyles.module.css';
 import { hasRole, postForm } from '../../services/authentication';
 import { useToast } from '../../context/ToastContext';
 
@@ -74,8 +74,11 @@ export const ShiftsList = () => {
   };
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>Shift Management</h1>
+    <div className={styles.prisonContainer}>
+      <div className={styles.prisonHeader}>
+        <h1 className={styles.prisonTitle}>Shift Management</h1>
+        <p className={styles.prisonSubtitle}>Assign and manage officer shifts</p>
+      </div>
 
       {hasRole('manager') && (
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px', marginBottom: '24px', maxWidth: '100%' }}>

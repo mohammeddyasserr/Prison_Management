@@ -217,8 +217,8 @@ async def create_visit(request: schemas.VisitCreate, db: SessionDep):
                 prison_name=prison_name
             )
         except Exception as e:
-            # You might want to log this error instead of failing the request
-            pass
+            import logging
+            logging.error(f"Failed to send visit request email: {e}")
     return new_visit
 
 
@@ -310,8 +310,9 @@ async def confirm_visit(visit_id: int, db: SessionDep):
                 visit_time=visit_time,
                 prison_name=prison_name
             )
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to send visit confirmation email: {e}")
 
     return updated_visit
 
@@ -357,8 +358,9 @@ async def reject_visit(visit_id: int, request: schemas.RejectVisitRequest, db: S
                 prison_name=prison_name,
                 reason=request.denial_reason
             )
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to send visit rejection email: {e}")
 
     return updated_visit
 

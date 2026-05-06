@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import styles from '../EntityStyles.module.css';
+import styles from '../PrisonStyles.module.css';
 import { postForm } from '../../services/authentication';
 import { useToast } from '../../context/ToastContext';
 
@@ -17,7 +17,7 @@ export const TransferForm = () => {
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const prisonId = user.assigned_prison || 1; // Fallback or current prison context
+    const prisonId = user.assigned_prison || 1;
 
     Promise.all([
       fetch('/api/inmates').then(r => r.json()).then(inmates => 
@@ -41,7 +41,6 @@ export const TransferForm = () => {
     e.preventDefault();
     try {
       const inmate = data.inmates.find(i => String(i.inmate_id) === String(formData.inmate_id));
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
       
       const payload = {
         inmate_id: Number(formData.inmate_id),
@@ -67,44 +66,88 @@ export const TransferForm = () => {
     }
   };
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
+  if (loading) return <div className={styles.emptyState}>Loading...</div>;
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>Request Inter-Prison Transfer</h1>
+    <div className={styles.prisonContainer}>
+      <div className={styles.wallBackground} aria-hidden="true">
+        <div className={styles.wallGrain} />
+        <div className={styles.blockLines} />
+        <div className={styles.stainOne} />
+        <div className={styles.stainTwo} />
+        <div className={styles.lightTube} />
+        <div className={styles.lightCone} />
+      </div>
+      <div className={styles.flickerLight} aria-hidden="true" />
+      <div className={styles.barOverlay} aria-hidden="true">
+        {[0, 1, 2].map((bar) => <div key={bar} className={styles.bar} />)}
+      </div>
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '100%' }}>
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Inmate *</label>
-            <select name="inmate_id" value={formData.inmate_id} onChange={handleChange} required className={styles.formControl}>
-              <option value="">— Select Inmate —</option>
-              {data.inmates.map(i => (
-                <option key={i.inmate_id} value={i.inmate_id}>{i.full_name} (ID: {i.inmate_id})</option>
-              ))}
-            </select>
-          </div>
+      <div className={styles.prisonContent}>
+        <header className={styles.prisonHeader}>
+          <h1 className={styles.prisonTitle}>Request Inter-Prison Transfer</h1>
+        </header>
 
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Destination Prison *</label>
-            <select name="destination_prison" value={formData.destination_prison} onChange={handleChange} required className={styles.formControl}>
-              <option value="">— Select Destination —</option>
-              {data.prisons.map(p => (
-                <option key={p.prison_id} value={p.prison_id}>{p.name} ({p.type})</option>
-              ))}
-            </select>
-          </div>
+        <div className={styles.formCard}>
+          <form onSubmit={handleSubmit}>
+            <div className={styles.formSection}>
+              <h2 className={styles.formSectionTitle}>Transfer Details</h2>
 
-          <div style={{ marginBottom: '32px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Reason for Transfer</label>
-            <textarea name="reason" value={formData.reason} onChange={handleChange} rows="3" className={styles.formControl} placeholder="Clinical need, security reclassification, overcrowding, court order, etc."></textarea>
-          </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Inmate *</label>
+                <select 
+                  name="inmate_id" 
+                  value={formData.inmate_id} 
+                  onChange={handleChange} 
+                  required 
+                  className={styles.formSelect}
+                >
+                  <option value="">— Select Inmate —</option>
+                  {data.inmates.map(i => (
+                    <option key={i.inmate_id} value={i.inmate_id}>
+                      {i.full_name} (ID: {i.inmate_id})
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div style={{ display: 'flex', gap: '12px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
-            <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>Submit Transfer Request</button>
-            <Link to="/transfers" className={`${styles.btn} ${styles.btnOutline}`}>Cancel</Link>
-          </div>
-        </form>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Destination Prison *</label>
+                <select 
+                  name="destination_prison" 
+                  value={formData.destination_prison} 
+                  onChange={handleChange} 
+                  required 
+                  className={styles.formSelect}
+                >
+                  <option value="">— Select Destination —</option>
+                  {data.prisons.map(p => (
+                    <option key={p.prison_id} value={p.prison_id}>
+                      {p.name} ({p.type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Reason for Transfer</label>
+                <textarea 
+                  name="reason" 
+                  value={formData.reason} 
+                  onChange={handleChange} 
+                  rows="3" 
+                  className={styles.formTextarea}
+                  placeholder="Clinical need, security reclassification, overcrowding, court order, etc."
+                ></textarea>
+              </div>
+            </div>
+
+            <div className={styles.formActions}>
+              <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>Submit Transfer Request</button>
+              <Link to="/transfers" className={`${styles.btn} ${styles.btnOutline}`}>Cancel</Link>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

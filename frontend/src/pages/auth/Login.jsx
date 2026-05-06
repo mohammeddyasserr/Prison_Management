@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, CalendarDays, LockKeyhole, UserRound } from 'lucide-react';
 import styles from './Login.module.css';
 import { postForm } from '../../services/authentication';
 import { useToast } from '../../context/ToastContext';
@@ -49,7 +50,21 @@ export const Login = () => {
 
   return (
     <div className={styles.loginContainer}>
+      <div className={styles.lightTube} aria-hidden="true" />
+      <div className={styles.lightCone} aria-hidden="true" />
+      <div className={styles.scratchField} aria-hidden="true">
+        {Array.from({ length: 18 }).map((_, i) => <span key={i} />)}
+      </div>
+      <div className={`${styles.barStack} ${styles.leftBars}`} aria-hidden="true">
+        {Array.from({ length: 7 }).map((_, i) => <span key={i} />)}
+      </div>
+       <div className={`${styles.barStack} ${styles.rightBars}`} aria-hidden="true">
+        {Array.from({ length: 7 }).map((_, i) => <span key={i} />)}
+      </div>
+
       <div className={styles.loginCard}>
+        <div className={styles.cardPin} aria-hidden="true" />
+        <div className={styles.metaLabel}>Secure Access Ledger</div>
         <h1>CPMS</h1>
         <p className={styles.subtitle}>Centralized Prison Management System</p>
 
@@ -58,37 +73,48 @@ export const Login = () => {
         <form onSubmit={handleLogin} className={styles.form}>
           <div className={styles.formGroup}>
             <label htmlFor="national_id">Username / Email / National ID</label>
-            <input
-              id="national_id"
-              type="text"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="Enter username, email, or National ID"
-              required
-              autoFocus
-            />
+            <div className={styles.inputShell}>
+              <UserRound size={18} />
+              <input
+                id="national_id"
+                type="text"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="Enter username, email, or National ID"
+                required
+                autoFocus
+              />
+            </div>
           </div>
 
           <div className={styles.formGroup}>
             <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-            />
+            <div className={styles.inputShell}>
+              <LockKeyhole size={18} />
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+              />
+            </div>
           </div>
 
-          <button type="submit" className={styles.loginButton}>Sign In</button>
+          <button type="submit" className={styles.loginButton}>
+            <span>Sign In</span>
+            <ArrowRight size={18} />
+          </button>
         </form>
 
         <div className={styles.portalLink}>
-          <Link to="/visit-request">Public Visit Request Portal →</Link>
+          <Link to="/visit-request">
+            <CalendarDays size={16} />
+            <span>Public Visit Request Portal</span>
+          </Link>
         </div>
       </div>
     </div>
   );
 };
-

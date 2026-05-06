@@ -44,7 +44,10 @@ export const OfficerDashboard = () => {
 
   return (
     <div className={styles.dashboard}>
-      <h1 className={styles.title}>Officer Dashboard</h1>
+      <div className={styles.header}>
+        <h1 className={styles.title}>Officer Dashboard</h1>
+        <p className={styles.subtitle}>Block Operations Ledger</p>
+      </div>
 
       <div className={styles.kpiGrid}>
         {kpiData.map((kpi, i) => (
@@ -53,7 +56,7 @@ export const OfficerDashboard = () => {
       </div>
 
       <div className={styles.panel}>
-        <h2 className={styles.panelTitle}>Block Occupancy — Cell View</h2>
+        <h2 className={styles.panelTitle}>Block Occupancy - Cell View</h2>
         {cells?.length > 0 ? (
           <div className={styles.tableWrapper}>
             <table className={styles.table}>
@@ -134,7 +137,7 @@ export const OfficerDashboard = () => {
                     <td>{s.date}</td>
                     <td><span className={`${styles.badge} ${styles.badgeInfo}`}>{s.shift_type}</span></td>
                     <td>{s.block_name}</td>
-                    <td>{s.start_time} — {s.end_time}</td>
+                    <td>{s.start_time} - {s.end_time}</td>
                   </tr>
                 ))}
               </tbody>
