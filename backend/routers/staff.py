@@ -111,6 +111,38 @@ def get_non_manager_officers(session: SessionDep):
         )
     return staff_list
 
+@router.get("/officers/prison/{prison_id}", response_model=list[staff.StaffResponse], status_code=status.HTTP_200_OK)
+def get_officers_by_prison(prison_id: int, session: SessionDep):
+    query = text("""
+        SELECT 
+            o.national_id, 
+            o.name, 
+            o.email, 
+            o.phone, 
+            'officer' as role,
+            p.name as prison_name
+        FROM officer o
+        LEFT JOIN prison p ON o.prison_id = p.prison_id
+        LEFT JOIN prison p_mgr ON o.national_id = p_mgr.manager_id
+        WHERE o.prison_id = :prison_id AND p_mgr.manager_id IS NULL
+    """).bindparams(prison_id=prison_id)
+    
+    result = session.exec(query).all()
+    
+    staff_list = []
+    for row in result:
+        staff_list.append(
+            staff.StaffResponse(
+                national_id=row[0],
+                name=row[1],
+                email=row[2],
+                phone=row[3],
+                role=row[4],
+                prison_name=row[5]
+            )
+        )
+    return staff_list
+
 
 @router.post("", response_model=dict, status_code=status.HTTP_201_CREATED)
 def create_staff(staff_in: staff.StaffCreate, session: SessionDep):
