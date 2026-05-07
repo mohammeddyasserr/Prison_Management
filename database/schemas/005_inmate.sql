@@ -8,5 +8,7 @@ CREATE TABLE inmate (
     occupation              VARCHAR(100),
     start_date              DATE            NOT NULL,
     education_level         VARCHAR(50)     NOT NULL CHECK (education_level IN ('Illiterate','Literate', 'Primary','Preparatory', 'Secondary', 'Bachelor''s','Postgraduate education')),
-    assigned_cell           INTEGER         REFERENCES cell(cell_id)     ON DELETE SET NULL
+    assigned_cell           INTEGER         REFERENCES cell(cell_id)     ON DELETE SET NULL,
+    assigned_prison         INTEGER         REFERENCES prison(prison_id) ON DELETE SET NULL,
+    status                  VARCHAR(20)     DEFAULT 'Active'
 );

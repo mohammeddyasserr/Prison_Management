@@ -1,75 +1,113 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import styles from '../EntityStyles.module.css';
-import { hasRole } from '../../lib/auth';
-import { getIncidents, getPrisons, getBlocks, getOfficers } from '../../data/mockData';
+import styles from '../PrisonStyles.module.css';
+import { hasRole } from '../../services/authentication';
 
 export const IncidentsList = () => {
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const incidents = getIncidents();
-    const prisons = getPrisons();
-    const blocks = getBlocks();
-    const officers = getOfficers();
-    const enriched = incidents.map(inc => ({
-      ...inc,
-      prison_name: prisons.find(p => p.prison_id === inc.prison_id)?.name || '—',
-      block_name: blocks.find(b => b.block_id === inc.block_id)?.name || '—',
-      officer_name: officers.find(o => o.national_id === inc.reporting_officer)?.name || '—',
-    }));
-    setIncidents(enriched);
-    setLoading(false);
+    const token = localStorage.getItem('userToken') || '';
+    const headers = { 'Authorization': `Bearer ${token}` };
+
+    const fetchIncidents = async () => {
+      try {
+        let prisonId;
+
+        if (hasRole('manager')) {
+          const nationalId = localStorage.getItem('userNationalId') || '';
+          const prisonRes = await fetch(`/api/prison/user/${nationalId}`, { headers });
+          const prisonData = await prisonRes.json();
+          prisonId = prisonData?.prison_id;
+        } else {
+          prisonId = localStorage.getItem('prison_id');
+        }
+
+        const url = prisonId ? `/api/incidents/prison/${prisonId}` : '/api/incidents';
+        const res = await fetch(url, { headers });
+        const data = await res.json();
+        setIncidents(data);
+      } catch (err) {
+        console.error('Error fetching incidents:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchIncidents();
   }, []);
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Incident Reports...</div>;
+  if (loading) return <div className={styles.emptyState}>Loading Incident Reports...</div>;
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Incident Reports</h1>
-        {hasRole('officer') && (
-          <Link to="/incidents/add" className={`${styles.btn} ${styles.btnPrimary}`}>
-            <Plus size={16} /> Report Incident
-          </Link>
-        )}
+    <div className={styles.prisonContainer}>
+      <div className={styles.wallBackground} aria-hidden="true">
+        <div className={styles.wallGrain} />
+        <div className={styles.blockLines} />
+        <div className={styles.stainOne} />
+        <div className={styles.stainTwo} />
+        <div className={styles.lightTube} />
+        <div className={styles.lightCone} />
+      </div>
+      <div className={styles.flickerLight} aria-hidden="true" />
+      <div className={styles.barOverlay} aria-hidden="true">
+        {[0, 1, 2].map((bar) => <div key={bar} className={styles.bar} />)}
       </div>
 
-      <div className={styles.tableWrapper}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Type</th>
-              <th>Date/Time</th>
-              <th>Prison</th>
-              <th>Block</th>
-              <th>Officer</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {incidents.length > 0 ? incidents.map((inc) => (
-              <tr key={inc.incident_id}>
-                <td>{inc.incident_id}</td>
-                <td><span className={`${styles.badge} ${styles.badgeDanger}`}>{inc.type}</span></td>
-                <td>{inc.date_time}</td>
-                <td>{inc.prison_name || '—'}</td>
-                <td>{inc.block_name || '—'}</td>
-                <td>{inc.officer_name || '—'}</td>
-                <td>
-                  <Link to={`/incidents/${inc.incident_id}`} className={`${styles.btn} ${styles.btnOutline}`}>
-                    <Eye size={14} /> View
-                  </Link>
-                </td>
-              </tr>
-            )) : (
-              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No incidents reported.</td></tr>
-            )}
-          </tbody>
-        </table>
+      <div className={styles.prisonContent}>
+        <header className={styles.prisonHeader}>
+          <h1 className={styles.prisonTitle}>Incident Reports</h1>
+        </header>
+
+         {hasRole('officer') && (
+           <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+             <Link to="/incidents/add" className={`${styles.btn} ${styles.btnPrimary}`}>
+               <Plus size={16} /> Report Incident
+             </Link>
+           </div>
+         )}
+
+         <div className={styles.ledger}>
+           <div className={styles.ledgerTitle}>Security Incidents</div>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
+               <thead>
+                 <tr>
+                   <th>ID</th>
+                   <th>Type</th>
+                   <th>Date/Time</th>
+                   <th>Prison</th>
+                   <th>Block</th>
+                   <th>Inmates Involved</th>
+                   <th>Officer</th>
+                   <th>Actions</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {incidents.length > 0 ? incidents.map((inc) => (
+                   <tr key={inc.incident_id}>
+                     <td>{inc.incident_id}</td>
+                     <td><span className={`${styles.badge} ${styles.badgeDanger}`}>{inc.type}</span></td>
+                     <td>{new Date(inc.occurred_at).toLocaleString()}</td>
+                     <td>{inc.prison_name || '—'}</td>
+                     <td>{inc.block_id || '—'}</td>
+                     <td style={{ maxWidth: '180px', fontSize: '0.82rem' }}>{inc.involved_inmate_names || '—'}</td>
+                     <td>{inc.officer_name || '—'}</td>
+                     <td>
+                       <Link to={`/incidents/${inc.incident_id}`} className={`${styles.btn} ${styles.btnOutline}`}>
+                         <Eye size={14} /> View
+                       </Link>
+                     </td>
+                   </tr>
+                 )) : (
+                   <tr><td colSpan="8" className={styles.emptyState}>No incidents reported.</td></tr>
+                 )}
+              </tbody>
+            </table>
+          </div>
+         </div>
       </div>
     </div>
   );

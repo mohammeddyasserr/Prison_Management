@@ -3,16 +3,54 @@ import { Shield, AlertTriangle, UserMinus, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { KPICard } from '../../components/dashboard/KPICard';
 import styles from './DashboardStyles.module.css';
-import { getDashboardData } from '../../data/mockData';
 
 export const OfficerDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const result = getDashboardData('officer');
-    setData(result);
-    setLoading(false);
+    const nationalId = localStorage.getItem('userNationalId');
+    const prisonId = localStorage.getItem('prison_id');
+    Promise.all([
+      fetch(`/api/incidents/officer/${nationalId}`).then(r => r.json()).catch(() => []),
+      fetch(`/api/shift/officer/${nationalId}`).then(r => r.json()).catch(() => []),
+      prisonId ? fetch(`/api/prison/${prisonId}/blocks-cells`).then(r => r.json()).catch(() => []) : Promise.resolve([]),
+      fetch(`/api/disciplinary/officer/${nationalId}`).then(r => r.json()).catch(() => []),
+    ]).then(([incidents, shifts, blocksCells, disciplinary]) => {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const recent_incidents = incidents.filter(inc => new Date(inc.occurred_at) >= sevenDaysAgo);
+
+      const today = new Date().toISOString().split('T')[0];
+      const my_shifts = shifts.filter(s => s.date >= today);
+
+      const assigned_blocks = blocksCells.map(b => ({
+        block_id: b.block_id,
+        block_name: `Block ${b.block_id} (${b.security_level})`,
+        security_level: b.security_level,
+      }));
+
+      const cells = blocksCells.flatMap(b =>
+        (b.cells || []).map(c => ({
+          block_id: b.block_id,
+          block_name: `Block ${b.block_id} (${b.security_level})`,
+          cell_id: c.cell_id,
+          current_occupancy: c.occupancy || 0,
+          capacity: c.capacity,
+        }))
+      );
+
+      const active_solitary = disciplinary
+        .filter(d => d.punishment_type === 'Solitary Confinement' && d.end_date && d.end_date >= today)
+        .map(d => ({
+          inmate_id: d.inmate_id,
+          full_name: d.inmate_name,
+          end_date: d.end_date,
+        }));
+
+      setData({ recent_incidents, my_shifts, assigned_blocks, cells, active_solitary });
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div className={styles.loading}>Connecting to secure network...</div>;
@@ -35,7 +73,10 @@ export const OfficerDashboard = () => {
 
   return (
     <div className={styles.dashboard}>
-      <h1 className={styles.title}>Officer Dashboard</h1>
+      <div className={styles.header}>
+        <h1 className={styles.title}>Officer Dashboard</h1>
+        <p className={styles.subtitle}>Block Operations Ledger</p>
+      </div>
 
       <div className={styles.kpiGrid}>
         {kpiData.map((kpi, i) => (
@@ -44,7 +85,7 @@ export const OfficerDashboard = () => {
       </div>
 
       <div className={styles.panel}>
-        <h2 className={styles.panelTitle}>Block Occupancy — Cell View</h2>
+        <h2 className={styles.panelTitle}>Block Occupancy - Cell View</h2>
         {cells?.length > 0 ? (
           <div className={styles.tableWrapper}>
             <table className={styles.table}>
@@ -79,7 +120,7 @@ export const OfficerDashboard = () => {
                   {recent_incidents.map((inc, i) => (
                     <tr key={i}>
                       <td><span className={`${styles.badge} ${styles.badgeDanger}`}>{inc.type}</span></td>
-                      <td style={{ fontSize: '0.8rem' }}>{inc.date_time}</td>
+                      <td style={{ fontSize: '0.8rem' }}>{new Date(inc.occurred_at).toLocaleString()}</td>
                       <td>
                         <Link to={`/incidents/${inc.incident_id}`} className={styles.badgeInfo} style={{ borderRadius: '4px', padding: '4px 8px', display: 'inline-block' }}>
                           View
@@ -124,8 +165,8 @@ export const OfficerDashboard = () => {
                   <tr key={i}>
                     <td>{s.date}</td>
                     <td><span className={`${styles.badge} ${styles.badgeInfo}`}>{s.shift_type}</span></td>
-                    <td>{s.block_name}</td>
-                    <td>{s.start_time} — {s.end_time}</td>
+                    <td>Block {s.block_id}</td>
+                    <td>{s.time_range || '—'}</td>
                   </tr>
                 ))}
               </tbody>

@@ -1,17 +1,37 @@
 INSERT INTO doctor (national_id, prison_id, name, address, phone)
 VALUES
-('91919191919191', 1, 'Dr. Kareem Mostafa', 'Maadi clinic, Cairo', '01066666666'),
-('92929292929292', 2, 'Dr. Samir Adel', 'Center, Fayoum', '01277777777'),
+
+-- =========================
+-- PRISON 1
+-- =========================
+('91919191919191', 1, 'Dr. Kareem Mostafa', 'Maadi, Cairo', '01066666666'),
+('91919191919192', 1, 'Dr. Salma Hassan', 'Dokki, Giza', '01066666667'),
+('91919191919193', 1, 'Dr. Ahmed Nabil', 'Haram, Giza', '01066666668'),
+
+-- =========================
+-- PRISON 2
+-- =========================
+('92929292929292', 2, 'Dr. Samir Adel', 'Fayoum Center', '01277777777'),
+('92929292929293', 2, 'Dr. Mona Ibrahim', 'Fayoum City', '01277777778'),
+('92929292929294', 2, 'Dr. Youssef Ali', 'Itsa, Fayoum', '01277777779'),
+
+-- =========================
+-- PRISON 3
+-- =========================
 ('93939393939393', 3, 'Dr. Tarek Ziad', 'Zamalek, Cairo', '01188888888'),
+('93939393939394', 3, 'Dr. Farida Hassan', 'Nasr City, Cairo', '01188888889'),
+('93939393939395', 3, 'Dr. Omar Mostafa', 'Heliopolis, Cairo', '01188888880'),
+
+-- =========================
+-- PRISON 4
+-- =========================
 ('94949494949494', 4, 'Dr. Ahmed Youssef', 'Shubra, Cairo', '01599999999'),
-('95959595959595', 5, 'Dr. Hassan Ali', 'Smouha, Alex', '01011112222'),
-('96969696969696', 6, 'Dr. Nader Ibrahim', 'Qena City', '01222223333'),
-('97979797979797', 7, 'Dr. Mohamed Sayed', 'Assiut City', '01133334444'),
-('98989898989898', 8, 'Dr. Adel Nabil', 'Zagazig City', '01544445555'),
-('99999999999999', 9, 'Dr. Fathy Magdy', 'Ismailia City', '01055556666'),
-('81818181818181', 10, 'Dr. Saeed Tarek', 'Suez City', '01266667777'),
-('82828282828282', 11, 'Dr. Hisham Ramzy', 'Mansoura City', '01177778888'),
-('83838383838383', 12, 'Dr. Youssef Fathy', 'Tanta City', '01588889999'),
-('84848484848484', 13, 'Dr. Hossam Adel', 'Banha City', '01099991111'),
-('85858585858585', 14, 'Dr. Ramy Saleh', 'Kafr El Sheikh', '01211112222'),
-('86868686868686', 15, 'Dr. Wael Zaki', 'Minya City', '01122223333');
+('94949494949495', 4, 'Dr. Sara Nader', 'Damanhur, Beheira', '01599999998'),
+('94949494949496', 4, 'Dr. Khaled Samir', 'Kafr El Dawar, Beheira', '01599999997'),
+
+-- =========================
+-- PRISON 5
+-- =========================
+('95959595959595', 5, 'Dr. Hassan Ali', 'Smouha, Alexandria', '01011112222'),
+('95959595959596', 5, 'Dr. Nour Tarek', 'Stanley, Alexandria', '01011112223'),
+('95959595959597', 5, 'Dr. Mahmoud Adel', 'Sidi Gaber, Alexandria', '01011112224');

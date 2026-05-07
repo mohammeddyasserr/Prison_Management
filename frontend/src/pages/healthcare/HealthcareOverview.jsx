@@ -1,102 +1,133 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Activity, HeartPulse } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import styles from '../EntityStyles.module.css';
-import { hasRole } from '../../lib/auth';
-import { getDoctors, getMedicalVisits, getInmates, getPrisons } from '../../data/mockData';
+import styles from '../PrisonStyles.module.css';
+import { hasRole } from '../../services/authentication';
 
 export const HealthcareOverview = () => {
+  const [prisonId, setPrisonId] = useState(null);
   const [data, setData] = useState({ doctors: [], visits: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const doctors = getDoctors();
-    const visits = getMedicalVisits();
-    const inmates = getInmates();
-    const prisons = getPrisons();
-
-    const enrichedDoctors = doctors.map(d => ({
-      ...d,
-      prison_name: prisons.find(p => p.prison_id === d.prison_id)?.name || '—',
-    }));
-
-    const enrichedVisits = visits.map(v => ({
-      ...v,
-      inmate_name: inmates.find(i => i.inmate_id === v.inmate_id)?.full_name || '—',
-      doctor_name: doctors.find(d => d.national_id === v.doctor_id)?.name || '—',
-    }));
-
-    setData({ doctors: enrichedDoctors, visits: enrichedVisits });
-    setLoading(false);
+    const resolvePrison = async () => {
+      try {
+        let pid;
+        if (hasRole('manager')) {
+          const nationalId = localStorage.getItem('userNationalId') || '';
+          const prisonRes = await fetch(`/api/prison/user/${nationalId}`);
+          const prisonData = await prisonRes.json();
+          pid = prisonData?.prison_id;
+        } else {
+          pid = localStorage.getItem('prison_id');
+        }
+        setPrisonId(pid);
+      } catch {
+        setLoading(false);
+      }
+    };
+    resolvePrison();
   }, []);
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Healthcare Records...</div>;
+  useEffect(() => {
+    if (prisonId === null) return;
+    const doctorUrl = prisonId ? `/api/doctor/prison/${prisonId}` : '/api/doctor';
+    const visitUrl = prisonId ? `/api/medical-visit/prison/${prisonId}` : '/api/medical-visit';
+    Promise.all([
+      fetch(doctorUrl).then(r => r.json()),
+      fetch(visitUrl).then(r => r.json()),
+    ]).then(([doctors, visits]) => {
+      setData({ doctors, visits });
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [prisonId]);
+
+  if (loading) return <div className={styles.emptyState}>Loading Healthcare Records...</div>;
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Healthcare</h1>
-        <div className={styles.actions}>
-          {hasRole('super_admin', 'prison_manager') && (
-            <>
-              <Link to="/healthcare/doctors/add" className={`${styles.btn} ${styles.btnPrimary}`}>
-                <Plus size={16} /> Add Doctor
-              </Link>
-              <Link to="/healthcare/visits/add" className={`${styles.btn}`} style={{ backgroundColor: 'var(--color-success)', color: 'white' }}>
-                <Plus size={16} /> Record Medical Visit
-              </Link>
-            </>
-          )}
-        </div>
+    <div className={styles.prisonContainer}>
+      <div className={styles.wallBackground} aria-hidden="true">
+        <div className={styles.wallGrain} />
+        <div className={styles.blockLines} />
+        <div className={styles.stainOne} />
+        <div className={styles.stainTwo} />
+        <div className={styles.lightTube} />
+        <div className={styles.lightCone} />
+      </div>
+      <div className={styles.flickerLight} aria-hidden="true" />
+      <div className={styles.barOverlay} aria-hidden="true">
+        {[0, 1, 2].map((bar) => <div key={bar} className={styles.bar} />)}
       </div>
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px', marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <HeartPulse size={20} color="var(--color-danger)" /> Doctors
-        </h2>
-        <div className={styles.tableWrapper}>
-          <table className={styles.table}>
-            <thead><tr><th>National ID</th><th>Name</th><th>Address</th><th>Phone</th><th>Prison</th></tr></thead>
-            <tbody>
-              {data.doctors.length > 0 ? data.doctors.map((doc) => (
-                <tr key={doc.national_id}>
-                  <td>{doc.national_id}</td>
-                  <td>{doc.name}</td>
-                  <td>{doc.address || '—'}</td>
-                  <td>{doc.phone || '—'}</td>
-                  <td>{doc.prison_name}</td>
-                </tr>
-              )) : (
-                <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No doctors registered.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <div className={styles.prisonContent}>
+        <header className={styles.prisonHeader}>
+          <h1 className={styles.prisonTitle}>Healthcare</h1>
+        </header>
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px' }}>
-        <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Activity size={20} color="var(--color-primary)" /> Medical Visit Records
-        </h2>
-        <div className={styles.tableWrapper}>
-          <table className={styles.table}>
-            <thead><tr><th>ID</th><th>Inmate</th><th>Doctor</th><th>Date/Time</th><th>Diagnosis</th><th>Notes</th></tr></thead>
-            <tbody>
-              {data.visits.length > 0 ? data.visits.map((v) => (
-                <tr key={v.visit_id}>
-                  <td>{v.visit_id}</td>
-                  <td>{v.inmate_name}</td>
-                  <td>{v.doctor_name}</td>
-                  <td>{v.date_time}</td>
+        <div className={styles.ledger}>
+          <div className={styles.ledgerTitle}><HeartPulse size={16} style={{ marginRight: '6px' }} /> Doctors</div>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
+              <thead><tr><th>National ID</th><th>Name</th><th>Address</th><th>Phone</th><th>Prison</th></tr></thead>
+              <tbody>
+                {data.doctors.length > 0 ? data.doctors.map((doc) => (
+                  <tr key={doc.national_id}>
+                    <td>{doc.national_id}</td>
+                    <td>{doc.name}</td>
+                    <td>{doc.address || '—'}</td>
+                    <td>{doc.phone || '—'}</td>
+                    <td>{doc.prison_name}</td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan="5" className={styles.emptyState}>No doctors registered.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className={styles.detailPanel}>
+          <h3><Activity size={16} style={{ marginRight: '6px' }} /> Medical Visit Records</h3>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
+              <thead><tr><th>ID</th><th>Inmate</th><th>Doctor</th><th>Date/Time</th><th>Diagnosis</th><th>Notes</th></tr></thead>
+              <tbody>
+                {data.visits.length > 0 ? data.visits.map((v) => (
+                  <tr key={v.visit_id}>
+                    <td>{v.visit_id}</td>
+                    <td>{v.inmate_name}</td>
+                    <td>{v.doctor_name}</td>
+<td>
+                    {v.visit_datetime
+                      ? new Date(v.visit_datetime).toLocaleString()
+                      : '—'
+                    }
+                  </td>
                   <td>{v.diagnosis || '—'}</td>
-                  <td style={{ fontSize: '0.8rem', maxWidth: '300px' }}>{v.description || '—'}</td>
-                </tr>
-              )) : (
-                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No medical visits recorded.</td></tr>
-              )}
-            </tbody>
-          </table>
+                  <td style={{ fontSize: '0.8rem' }}>{v.description || '—'}</td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan="6" className={styles.emptyState}>No medical visits recorded.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
+
+        {hasRole('admin') && (
+          <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            <Link to="/healthcare/doctors/add" className={`${styles.btn} ${styles.btnPrimary}`}>
+              <Plus size={16} /> Add Doctor
+            </Link>
+          </div>
+        )}
+        {hasRole('manager') && (
+          <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            <Link to="/healthcare/visits/add" className={`${styles.btn} ${styles.badgeSuccess}`} style={{ textDecoration: 'none' }}>
+              <Plus size={16} /> Record Medical Visit
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

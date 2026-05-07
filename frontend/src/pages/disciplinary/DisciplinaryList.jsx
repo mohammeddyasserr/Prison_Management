@@ -1,87 +1,115 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Info } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import styles from '../EntityStyles.module.css';
-import { getDisciplinaryLogs, getInmates, getOfficers } from '../../data/mockData';
+import styles from '../PrisonStyles.module.css';
+import { hasRole } from '../../services/authentication';
 
 export const DisciplinaryList = () => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const rawLogs = getDisciplinaryLogs();  // ← renamed from logs to rawLogs
-    const inmates = getInmates();
-    const officers = getOfficers();
-    const enriched = rawLogs.map(log => ({
-      ...log,
-      inmate_name: inmates.find(i => i.inmate_id === log.inmate_id)?.full_name || '—',
-      imposed_by_name: officers.find(o => o.national_id === log.imposed_by)?.name || '—',
-    }));
-    setLogs(enriched);
-    setLoading(false);
+    const token = localStorage.getItem('userToken') || '';
+    const headers = { 'Authorization': `Bearer ${token}` };
+
+    const fetchLogs = async () => {
+      try {
+        let prisonId;
+
+        if (hasRole('manager')) {
+          const nationalId = localStorage.getItem('userNationalId') || '';
+          const prisonRes = await fetch(`/api/prison/user/${nationalId}`, { headers });
+          const prisonData = await prisonRes.json();
+          prisonId = prisonData?.prison_id;
+        } else {
+          prisonId = localStorage.getItem('prison_id');
+        }
+
+        const url = prisonId ? `/api/disciplinary?prison_id=${prisonId}` : '/api/disciplinary';
+        const res = await fetch(url, { headers });
+        const data = await res.json();
+        setLogs(data);
+      } catch (err) {
+        console.error('Error fetching disciplinary records:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLogs();
   }, []);
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Disciplinary Logs...</div>;
+  if (loading) return <div className={styles.emptyState}>Loading Disciplinary Records...</div>;
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Disciplinary Logs</h1>
-        <Link to="/disciplinary/add" className={`${styles.btn} ${styles.btnPrimary}`}>
-          <Plus size={16} /> Add Record
-        </Link>
+    <div className={styles.prisonContainer}>
+      <div className={styles.wallBackground} aria-hidden="true">
+        <div className={styles.wallGrain} />
+        <div className={styles.blockLines} />
+        <div className={styles.stainOne} />
+        <div className={styles.stainTwo} />
+        <div className={styles.lightTube} />
+        <div className={styles.lightCone} />
+      </div>
+      <div className={styles.flickerLight} aria-hidden="true" />
+      <div className={styles.barOverlay} aria-hidden="true">
+        {[0, 1, 2].map((bar) => <div key={bar} className={styles.bar} />)}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '16px' }}>
-        <Info size={16} color="var(--color-primary)" />
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
-          Mandatory registry per PRD 6.2. Records cannot be deleted.
-        </p>
-      </div>
+      <div className={styles.prisonContent}>
+        <header className={styles.prisonHeader}>
+          <h1 className={styles.prisonTitle}>Disciplinary Records</h1>
+        </header>
 
-      <div className={styles.tableWrapper}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Log ID</th>
-              <th>Incident</th>
-              <th>Inmate</th>
-              <th>Punishment</th>
-              <th>Solitary (days)</th>
-              <th>Date</th>
-              <th>End Date</th>
-              <th>Imposed By</th>
-              <th>Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.length > 0 ? logs.map((log) => (
-              <tr key={log.log_id}>
-                <td>{log.log_id}</td>
-                <td>
-                  {log.incident_id
-                    ? <Link to={`/incidents/${log.incident_id}`} className={`${styles.btn} ${styles.btnOutline}`} style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
-                      #{log.incident_id}
-                    </Link>
-                    : '—'}
-                </td>
-                <td>{log.inmate_name}</td>
-                <td>{log.punishment_type}</td>
-                <td>{log.solitary_confinement_duration || '—'}</td>
-                <td>{log.date_imposed}</td>
-                <td>{log.end_date || '—'}</td>
-                <td>{log.imposed_by_name || '—'}</td>
-                <td style={{ fontSize: '0.8rem', maxWidth: '200px' }}>{log.notes || '—'}</td>
-              </tr>
-            )) : (
-              <tr>
-                <td colSpan="9" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
-                  No disciplinary records found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        {hasRole('officer') && (
+          <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+            <Link to="/disciplinary/add" className={`${styles.btn} ${styles.btnPrimary}`}>
+              <Plus size={16} /> Add Record
+            </Link>
+          </div>
+        )}
+
+        <div className={styles.ledger}>
+          <div className={styles.ledgerTitle}>Disciplinary Records</div>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Inmate</th>
+                  <th>Incident</th>
+                  <th>Punishment</th>
+                  <th>Solitary (days)</th>
+                  <th>Date</th>
+                  <th>End Date</th>
+                  <th>Imposed By</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.length > 0 ? logs.map((log, idx) => (
+                  <tr key={log.log_id ?? idx}>
+                    <td>{log.inmate_name}</td>
+                    <td>
+                      {log.incident_id ? (
+                        <Link to={`/incidents/${log.incident_id}`} className={`${styles.btn} ${styles.btnOutline}`} style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
+                          #{log.incident_id}
+                        </Link>
+                      ) : '—'}
+                    </td>
+                    <td>{log.punishment_type}</td>
+                    <td>{log.solitary_days || '—'}</td>
+                    <td>{log.date_imposed}</td>
+                    <td>{log.end_date || '—'}</td>
+                    <td>{log.imposed_by_name || log.officer_name || '—'}</td>
+                    <td style={{ fontSize: '0.8rem', maxWidth: '200px' }}>{log.notes || '—'}</td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan="8" className={styles.emptyState}>No disciplinary records found.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );

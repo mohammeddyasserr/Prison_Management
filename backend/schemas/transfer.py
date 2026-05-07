@@ -19,8 +19,11 @@ class TransferUpdate(SQLModel):
 class TransferResponse(SQLModel):
     transfer_id: int
     inmate_id: int
+    inmate_name: str | None = None
     requesting_prison: int
+    from_prison: str | None = None
     destination_prison: int
+    to_prison: str | None = None
     manager_id: int
     reason: str
     status: str

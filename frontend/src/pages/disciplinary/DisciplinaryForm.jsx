@@ -1,105 +1,232 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import styles from '../EntityStyles.module.css';
-import { postForm } from '../../lib/http';
-import { getInmates, getIncidents } from '../../data/mockData';
+import styles from '../PrisonStyles.module.css';
+import { useToast } from '../../context/ToastContext';
 
 export const DisciplinaryForm = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [formData, setFormData] = useState({
     inmate_id: '',
     incident_id: '',
     punishment_type: 'Loss of Privileges',
-    solitary_confinement_duration: 0,
+    solitary_days: '',
     date_imposed: '',
-    end_date: '',
-    notes: ''
+    notes: '',
+    imposed_by: localStorage.getItem('userNationalId') || ''
   });
   const [data, setData] = useState({ inmates: [], incidents: [] });
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setData({
-      inmates: getInmates().filter(i => i.status === 'active'),
-      incidents: getIncidents(),
-    });
-    setLoading(false);
+    const token = localStorage.getItem('userToken') || '';
+    const headers = { 'Authorization': `Bearer ${token}` };
+    const prisonId = localStorage.getItem('prison_id');
+
+    const fetchInitialData = async () => {
+      try {
+        const inmatesUrl = prisonId ? `/api/inmates/prison/${prisonId}` : '/api/inmates';
+        const inmatesRes = await fetch(inmatesUrl, { headers });
+        const inmates = await inmatesRes.json();
+
+        setData({ inmates, incidents: [] });
+      } catch (err) {
+        console.error('Error fetching form data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInitialData();
   }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('userToken') || '';
+    const headers = { 'Authorization': `Bearer ${token}` };
+
+    const inmateId = formData.inmate_id;
+
+    const fetchIncidentsForInmate = async () => {
+      if (!inmateId) {
+        setData(prev => ({ ...prev, incidents: [] }));
+        setFormData(prev => ({ ...prev, incident_id: '' }));
+        return;
+      }
+
+      try {
+        const [incidentsRes, disciplinaryRes] = await Promise.all([
+          fetch(`/api/incidents/inmate/${inmateId}`, { headers }),
+          fetch(`/api/disciplinary/inmate/${inmateId}`, { headers })
+        ]);
+
+        const incidents = await incidentsRes.json();
+        const disciplinary = await disciplinaryRes.json();
+
+        const incidentList = Array.isArray(incidents) ? incidents : [];
+        const disciplinaryList = Array.isArray(disciplinary) ? disciplinary : [];
+
+        // Get IDs of incidents that already have a disciplinary record for THIS inmate
+        const linkedIncidentIds = new Set(
+          disciplinaryList
+            .filter(d => d.incident_id !== null && d.incident_id !== undefined)
+            .map(d => String(d.incident_id))
+        );
+
+        // Filter out incidents that are already linked for THIS inmate
+        const filteredIncidents = incidentList.filter(
+          i => !linkedIncidentIds.has(String(i.incident_id))
+        );
+
+        setData(prev => ({ ...prev, incidents: filteredIncidents }));
+
+        setFormData(prev => {
+          const stillValid = filteredIncidents.some(i => String(i.incident_id) === String(prev.incident_id));
+          return stillValid ? prev : { ...prev, incident_id: '' };
+        });
+      } catch (err) {
+        console.error('Error fetching incidents for inmate:', err);
+        setData(prev => ({ ...prev, incidents: [] }));
+      }
+    };
+
+    fetchIncidentsForInmate();
+  }, [formData.inmate_id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'inmate_id' ? { incident_id: '' } : {})
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await postForm('/disciplinary/add', formData);
-    navigate('/disciplinary');
+    try {
+      if (!formData.inmate_id) {
+        toast.error('Validation Error', 'Please select an inmate.');
+        return;
+      }
+      if (!formData.date_imposed) {
+        toast.error('Validation Error', 'Please select a date.');
+        return;
+      }
+
+      const payload = {
+        inmate_id: parseInt(formData.inmate_id, 10),
+        incident_id: formData.incident_id ? parseInt(formData.incident_id, 10) : null,
+        punishment_type: formData.punishment_type,
+        solitary_days: formData.solitary_days ? parseInt(formData.solitary_days, 10) : null,
+        date_imposed: formData.date_imposed,
+        notes: formData.notes,
+        imposed_by: formData.imposed_by
+      };
+
+      const token = localStorage.getItem('userToken') || '';
+      const response = await fetch('/api/disciplinary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const responseBody = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.error('API Error:', responseBody);
+        throw new Error(responseBody.detail || 'Submission Failed');
+      }
+
+      toast.success('Record Added', 'The disciplinary action has been recorded.');
+      navigate('/disciplinary');
+    } catch {
+      toast.error('Submission Failed', 'An error occurred while recording the disciplinary action.');
+    }
   };
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
+  if (loading) return <div className={styles.emptyState}>Loading...</div>;
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>Add Disciplinary Record</h1>
+    <div className={styles.prisonContainer}>
+      <div className={styles.wallBackground} aria-hidden="true">
+        <div className={styles.wallGrain} />
+        <div className={styles.blockLines} />
+        <div className={styles.stainOne} />
+        <div className={styles.stainTwo} />
+        <div className={styles.lightTube} />
+        <div className={styles.lightCone} />
+      </div>
+      <div className={styles.flickerLight} aria-hidden="true" />
+      <div className={styles.barOverlay} aria-hidden="true">
+        {[0, 1, 2].map((bar) => <div key={bar} className={styles.bar} />)}
+      </div>
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '700px' }}>
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Inmate *</label>
-            <select name="inmate_id" value={formData.inmate_id} onChange={handleChange} required className={styles.formControl}>
-              <option value="">— Select Inmate —</option>
-              {data.inmates.map(i => (
-                <option key={i.inmate_id} value={i.inmate_id}>{i.full_name} (ID: {i.inmate_id})</option>
-              ))}
-            </select>
-          </div>
+      <div className={styles.prisonContent}>
+        <header className={styles.prisonHeader}>
+          <h1 className={styles.prisonTitle}>Add Disciplinary Record</h1>
+        </header>
 
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Linked Incident (optional)</label>
-            <select name="incident_id" value={formData.incident_id} onChange={handleChange} className={styles.formControl}>
-              <option value="">— No linked incident —</option>
-              {data.incidents.map(inc => (
-                <option key={inc.incident_id} value={inc.incident_id}>
-                  #{inc.incident_id} — {inc.type} ({inc.date_time})
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className={styles.formCard}>
+          <form onSubmit={handleSubmit}>
+            <div className={styles.formSection}>
+              <h2 className={styles.formSectionTitle}>Disciplinary Action</h2>
 
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Punishment Type *</label>
-            <select name="punishment_type" value={formData.punishment_type} onChange={handleChange} required className={styles.formControl}>
-              {['Loss of Privileges', 'Solitary Confinement', 'Transfer to High-Security', 'Restricted Visits', 'Extra Labor', 'Other'].map(t => <option key={t}>{t}</option>)}
-            </select>
-          </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Inmate *</label>
+                <select name="inmate_id" value={formData.inmate_id} onChange={handleChange} required className={styles.formSelect}>
+                  <option value="">— Select Inmate —</option>
+                  {data.inmates.map(i => (
+                    <option key={i.inmate_id} value={i.inmate_id}>
+                      {i.full_name} (ID: {i.inmate_id})
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Solitary Confinement Duration (days, max 30)</label>
-            <input type="number" name="solitary_confinement_duration" value={formData.solitary_confinement_duration} onChange={handleChange} min="0" max="30" className={styles.formControl} />
-          </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Linked Incident (optional)</label>
+                <select name="incident_id" value={formData.incident_id} onChange={handleChange} className={styles.formSelect}>
+                  <option value="">— No linked incident —</option>
+                  {data.incidents.map(inc => (
+                    <option key={inc.incident_id} value={inc.incident_id}>
+                      #{inc.incident_id} — {inc.type} ({new Date(inc.occurred_at).toLocaleDateString()})
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Date Imposed *</label>
-              <input type="date" name="date_imposed" value={formData.date_imposed} onChange={handleChange} required className={styles.formControl} />
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Punishment Type *</label>
+                <select name="punishment_type" value={formData.punishment_type} onChange={handleChange} required className={styles.formSelect}>
+                  {['Loss of Privileges', 'Solitary Confinement', 'Transfer to High-Security', 'Restricted Visits', 'Extra Labor', 'Other'].map(t => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Solitary Confinement Duration (days, max 30)</label>
+                <input type="number" name="solitary_days" value={formData.solitary_days} onChange={handleChange} min="0" max="30" className={styles.formInput} />
+              </div>
+
+              <div className={styles.formGroup}>
+                 <label className={styles.formLabel}>Date Imposed *</label>
+                 <input type="date" name="date_imposed" value={formData.date_imposed} onChange={handleChange} required className={styles.formInput} />
+               </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Notes</label>
+                <textarea name="notes" value={formData.notes} onChange={handleChange} rows="3" className={styles.formTextarea}></textarea>
+              </div>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>End Date</label>
-              <input type="date" name="end_date" value={formData.end_date} onChange={handleChange} className={styles.formControl} />
+
+            <div className={styles.formActions}>
+              <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>Record Disciplinary Action</button>
+              <Link to="/disciplinary" className={`${styles.btn} ${styles.btnOutline}`}>Cancel</Link>
             </div>
-          </div>
-
-          <div style={{ marginBottom: '32px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Notes</label>
-            <textarea name="notes" value={formData.notes} onChange={handleChange} rows="3" className={styles.formControl}></textarea>
-          </div>
-
-          <div style={{ display: 'flex', gap: '12px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
-            <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>Record Disciplinary Action</button>
-            <Link to="/disciplinary" className={`${styles.btn} ${styles.btnOutline}`}>Cancel</Link>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

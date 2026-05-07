@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Trash2, Calendar } from 'lucide-react';
-import styles from '../EntityStyles.module.css';
-import { hasRole } from '../../lib/auth';
-import { postForm } from '../../lib/http';
-import { getShifts, getOfficers, getBlocks, getPrisons } from '../../data/mockData';
+import styles from '../PrisonStyles.module.css';
+import { hasRole } from '../../services/authentication';
+import { useToast } from '../../context/ToastContext';
 
 export const ShiftsList = () => {
   const [data, setData] = useState({ shifts: [], officers: [], blocks: [] });
   const [loading, setLoading] = useState(true);
+  const toast = useToast();
   const [formData, setFormData] = useState({
     officer_id: '',
     block_id: '',
@@ -15,31 +15,61 @@ export const ShiftsList = () => {
     date: '',
   });
 
-  useEffect(() => {
-    const shifts = getShifts();
-    const officers = getOfficers();
-    const blocks = getBlocks();
-    const prisons = getPrisons();
+useEffect(() => {
+    const fetchData = async () => {
+      try {
+        let prisonId;
+        if (hasRole('manager')) {
+          const nationalId = localStorage.getItem('userNationalId') || '';
+          const prisonRes = await fetch(`/api/prison/user/${nationalId}`);
+          const prisonData = await prisonRes.json();
+          prisonId = prisonData?.prison_id;
+        } else {
+          prisonId = localStorage.getItem('prison_id');
+        }
 
-    const enrichedShifts = shifts.map(s => {
-      const block = blocks.find(b => b.block_id === s.block_id);
-      const prison = block ? prisons.find(p => p.prison_id === block.prison_id) : null;
-      return {
-        ...s,
-        officer_name: officers.find(o => o.national_id === s.officer_id)?.name || '—',
-        block_name: block?.name || '—',
-        prison_name: prison?.name || '—',
-      };
-    });
+        const officersUrl = (hasRole('manager') && prisonId)
+          ? `/api/staff/officers/prison/${prisonId}`
+          : '/api/staff/officers';
+        const [shifts, officers] = await Promise.all([
+          hasRole('admin') || hasRole('manager')
+            ? prisonId
+              ? fetch(`/api/shift/prison/${prisonId}`).then(r => r.json())
+              : fetch('/api/shift').then(r => r.json())
+            : fetch(`/api/shift/officer/${localStorage.getItem('userNationalId')}`).then(r => r.json()),
+          fetch(officersUrl).then(r => r.json()),
+        ]);
 
-    setData({
-      shifts: enrichedShifts,
-      officers: officers,
-      blocks: blocks,
-    });
-    setLoading(false);
+        const allPrisons = await fetch('/api/prison').then(r => r.json());
+        const prisons = hasRole('admin')
+          ? allPrisons
+          : prisonId
+            ? allPrisons.filter(p => p.prison_id == prisonId)
+            : [];
+
+        const allBlocks = await Promise.all(
+          prisons.map(p => fetch(`/api/block/prison/${p.prison_id}`).then(r => r.json()))
+        );
+
+        const flattenedBlocks = allBlocks.flat().map(b => ({
+          block_id: b.block_id,
+          name: `Block ${b.block_id} (${b.security_level})`
+        }));
+
+        const officerIds = new Set(officers.map(o => o.national_id));
+        const filteredShifts = shifts.filter(s => officerIds.has(s.officer_id));
+
+        setData({ shifts: filteredShifts, officers, blocks: flattenedBlocks });
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading Shift Schedule...</div>;
+  if (loading) return <div className={styles.emptyState}>Loading Shift Schedule...</div>;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -48,100 +78,156 @@ export const ShiftsList = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await postForm('/shifts/add', formData);
-    window.location.reload();
+    try {
+      const payload = {
+        ...formData,
+        block_id: parseInt(formData.block_id, 10),
+        manager_id: localStorage.getItem('userNationalId') || 'System'
+      };
+
+      const response = await fetch('/api/shift', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Assignment Failed');
+      }
+
+      const newShift = await response.json();
+
+      setData(prev => ({
+        ...prev,
+        shifts: [newShift, ...prev.shifts]
+      }));
+
+      setFormData({
+        officer_id: '',
+        block_id: '',
+        shift_type: 'Morning',
+        date: '',
+      });
+
+      toast.success('Shift Assigned', 'The shift has been successfully assigned to the officer.');
+    } catch (err) {
+      toast.error('Assignment Failed', err.message || 'There was an error assigning the shift.');
+    }
   };
 
   const removeShift = async (shiftId) => {
-    await postForm(`/shifts/${shiftId}/delete`, {});
-    setData((current) => ({
-      ...current,
-      shifts: current.shifts.filter((shift) => shift.shift_id !== shiftId),
-    }));
+    if (!window.confirm('Are you sure you want to remove this shift assignment?')) return;
+    try {
+      const response = await fetch(`/api/shift/${shiftId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) throw new Error('Delete failed');
+
+      setData((current) => ({
+        ...current,
+        shifts: current.shifts.filter((shift) => shift.shift_id !== shiftId),
+      }));
+      toast.success('Shift Removed', 'The shift assignment has been removed.');
+    } catch (err) {
+      toast.error('Removal Failed', 'Could not remove the shift assignment.');
+    }
   };
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>Shift Management</h1>
-
-      {hasRole('prison_manager') && (
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px', marginBottom: '24px', maxWidth: '800px' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px' }}>Assign Shift</h2>
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Officer *</label>
-              <select name="officer_id" value={formData.officer_id} onChange={handleChange} style={{ width: '100%', padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }} required>
-                <option value="">— Select —</option>
-                {data.officers.map(o => <option key={o.national_id} value={o.national_id}>{o.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Block *</label>
-              <select name="block_id" value={formData.block_id} onChange={handleChange} style={{ width: '100%', padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }} required>
-                <option value="">— Select —</option>
-                {data.blocks.map(b => <option key={b.block_id} value={b.block_id}>{b.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Shift Type *</label>
-              <select name="shift_type" value={formData.shift_type} onChange={handleChange} style={{ width: '100%', padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }} required>
-                <option value="Morning">Morning (06:00–14:00)</option>
-                <option value="Afternoon">Afternoon (14:00–22:00)</option>
-                <option value="Night">Night (22:00–06:00)</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>Date *</label>
-              <input type="date" name="date" value={formData.date} onChange={handleChange} style={{ width: '100%', padding: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }} required />
-            </div>
-            <div style={{ gridColumn: 'span 2' }}>
-              <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} style={{ width: '100%', justifyContent: 'center' }}>Assign Shift</button>
-            </div>
-          </form>
+    <div className={styles.prisonContainer}>
+      <div className={styles.prisonContent}>
+        <div className={styles.prisonHeader}>
+          <h1 className={styles.prisonTitle}>Shift Management</h1>
+          <p className={styles.prisonSubtitle}>Assign and manage officer shifts</p>
         </div>
-      )}
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px' }}>
-        <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Calendar size={20} color="var(--color-primary)" /> Shift Schedule
-        </h2>
-        <div className={styles.tableWrapper}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>ID</th>
-                {!hasRole('officer') && <th>Officer</th>}
-                <th>Block</th>
-                {hasRole('super_admin') && <th>Prison</th>}
-                <th>Shift</th>
-                <th>Date</th>
-                <th>Time</th>
-                {hasRole('prison_manager') && <th>Actions</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {data.shifts.length > 0 ? data.shifts.map((s) => (
-                <tr key={s.shift_id}>
-                  <td>{s.shift_id}</td>
-                  {!hasRole('officer') && <td>{s.officer_name || '—'}</td>}
-                  <td>{s.block_name}</td>
-                  {hasRole('super_admin') && <td>{s.prison_name || '—'}</td>}
-                  <td><span className={`${styles.badge} ${styles.badgeInfo}`}>{s.shift_type}</span></td>
-                  <td>{s.date}</td>
-                  <td>{s.start_time} — {s.end_time}</td>
-                  {hasRole('prison_manager') && (
-                    <td className={styles.actions}>
-                      <button className={`${styles.btn} ${styles.badgeDanger}`} style={{ border: 'none', cursor: 'pointer' }} onClick={() => removeShift(s.shift_id)}>
-                        <Trash2 size={14} /> Remove
-                      </button>
-                    </td>
+{hasRole('manager') && (
+           <div className={styles.formCard} style={{ marginBottom: '22px' }}>
+            <div className={styles.formSection}>
+              <p className={styles.formSectionTitle}>Assign Shift</p>
+              <form onSubmit={handleSubmit} className={styles.prisonForm}>
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.formLabel}>Officer *</label>
+                    <select name="officer_id" value={formData.officer_id} onChange={handleChange} className={styles.formInput} required>
+                      <option value="">— Select —</option>
+                      {data.officers.map(o => <option key={o.national_id} value={o.national_id}>{o.name}</option>)}
+                    </select>
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.formLabel}>Block *</label>
+                    <select name="block_id" value={formData.block_id} onChange={handleChange} className={styles.formInput} required>
+                      <option value="">— Select —</option>
+                      {data.blocks.map(b => <option key={b.block_id} value={b.block_id}>{b.name}</option>)}
+                    </select>
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.formLabel}>Shift Type *</label>
+                    <select name="shift_type" value={formData.shift_type} onChange={handleChange} className={styles.formInput} required>
+                      <option value="Morning">Morning (06:00–14:00)</option>
+                      <option value="Afternoon">Afternoon (14:00–22:00)</option>
+                      <option value="Night">Night (22:00–06:00)</option>
+                    </select>
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.formLabel}>Date *</label>
+                    <input type="date" name="date" value={formData.date} onChange={handleChange} className={styles.formInput} required />
+                  </div>
+                </div>
+                <div className={styles.formActions}>
+                  <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>Assign Shift</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        <div className={styles.ledger}>
+          <div className={styles.ledgerPinLeft} />
+          <div className={styles.ledgerPinRight} />
+          <p className={styles.ledgerTitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Calendar size={18} color="#7a0000" /> Shift Schedule
+          </p>
+<div className={styles.tableWrapper}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Officer</th>
+                    {hasRole('admin') && <th>Prison</th>}
+                    <th>Block</th>
+                    <th>Shift</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    {hasRole('manager') && <th>Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.shifts.length > 0 ? data.shifts.map((s) => (
+                    <tr key={s.shift_id}>
+                      <td>{s.shift_id}</td>
+                      <td>{s.officer_name || '—'}</td>
+                      {hasRole('admin') && <td>{s.prison_name || '—'}</td>}
+                      <td>Block {s.block_id}</td>
+                      <td><span className={`${styles.badge} ${styles.badgeInfo}`}>{s.shift_type}</span></td>
+                      <td>{s.date}</td>
+                      <td>{s.time_range}</td>
+                      {hasRole('manager') && (
+                        <td className={styles.actions}>
+                          <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => removeShift(s.shift_id)}>
+                            <Trash2 size={14} /> Remove
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  )) : (
+                    <tr><td colSpan={hasRole('manager') ? (hasRole('admin') ? '8' : '7') : (hasRole('admin') ? '7' : '6')} style={{ textAlign: 'center', padding: '20px', color: '#7a6a58' }}>No shifts found.</td></tr>
                   )}
-                </tr>
-              )) : (
-                <tr><td colSpan={hasRole('prison_manager') ? '7' : hasRole('super_admin') ? '7' : '5'} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No shifts found.</td></tr>
-              )}
-            </tbody>
-          </table>
+                </tbody>
+              </table>
+            </div>
         </div>
       </div>
     </div>

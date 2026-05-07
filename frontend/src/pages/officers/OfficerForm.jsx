@@ -1,18 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import styles from '../EntityStyles.module.css';
-import { postForm } from '../../lib/http';
-import { getPrisons } from '../../data/mockData';
+import styles from '../PrisonStyles.module.css';
+import { useToast } from '../../context/ToastContext';
 
 export const OfficerForm = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [formData, setFormData] = useState({
     national_id: '',
     name: '',
     email: '',
     phone: '',
     address: '',
-    role: 'officer',
     prison_id: '',
     password: ''
   });
@@ -20,8 +19,10 @@ export const OfficerForm = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setPrisons(getPrisons());
-    setLoading(false);
+    fetch('/api/prison')
+      .then(r => r.json())
+      .then(data => { setPrisons(data); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
 
   const handleChange = (e) => {
@@ -31,67 +32,171 @@ export const OfficerForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await postForm('/officers/add', formData);
-    navigate('/officers');
+    try {
+      const token = localStorage.getItem('userToken') || localStorage.getItem('token');
+      if (!token) throw new Error('No token found');
+
+      if (!formData.prison_id) {
+        toast.error('Creation Failed', 'Please select an Assigned Prison.');
+        return;
+      }
+
+      const response = await fetch('/api/login/create_officer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          national_id: formData.national_id,
+          name: formData.name,
+          phone: formData.phone,
+          address: formData.address,
+          email: formData.email,
+          password: formData.password,
+          prison_id: parseInt(formData.prison_id)
+        })
+      });
+
+      if (!response.ok) {
+        let errorMsg = 'Submission failed';
+        try {
+          const errData = await response.json();
+          errorMsg = errData.detail || errorMsg;
+        } catch (e) {
+          console.error(e);
+        }
+        throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
+      }
+
+      toast.success('Account Created', `Staff account for ${formData.name} has been successfully created.`);
+      navigate('/officers');
+    } catch (err) {
+      toast.error('Creation Failed', err.message || 'There was an error creating the staff account. Please check prison selection and unique ID validation.');
+    }
   };
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
+  if (loading) return <div className={styles.emptyState}>Loading...</div>;
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>Add Staff Member</h1>
+    <div className={styles.prisonContainer}>
+      <div className={styles.wallBackground} aria-hidden="true">
+        <div className={styles.wallGrain} />
+        <div className={styles.blockLines} />
+        <div className={styles.stainOne} />
+        <div className={styles.stainTwo} />
+        <div className={styles.lightTube} />
+        <div className={styles.lightCone} />
+      </div>
+      <div className={styles.flickerLight} aria-hidden="true" />
+      <div className={styles.barOverlay} aria-hidden="true">
+        {[0, 1, 2].map((bar) => <div key={bar} className={styles.bar} />)}
+      </div>
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '24px', maxWidth: '700px' }}>
-        <form onSubmit={handleSubmit}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>National ID *</label>
-              <input type="text" name="national_id" value={formData.national_id} onChange={handleChange} required className={styles.formControl} />
+      <div className={styles.prisonContent}>
+        <header className={styles.prisonHeader}>
+          <h1 className={styles.prisonTitle}>Add Staff Member</h1>
+        </header>
+
+        <div className={styles.formCard}>
+          <form onSubmit={handleSubmit}>
+            <div className={styles.formSection}>
+              <h2 className={styles.formSectionTitle}>Staff Information</h2>
+
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>National ID *</label>
+                  <input 
+                    type="text" 
+                    name="national_id" 
+                    value={formData.national_id} 
+                    onChange={handleChange} 
+                    required 
+                    className={styles.formInput}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Full Name *</label>
+                  <input 
+                    type="text" 
+                    name="name" 
+                    value={formData.name} 
+                    onChange={handleChange} 
+                    required 
+                    className={styles.formInput}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Email</label>
+                  <input 
+                    type="email" 
+                    name="email" 
+                    value={formData.email} 
+                    onChange={handleChange} 
+                    className={styles.formInput}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Phone</label>
+                  <input 
+                    type="text" 
+                    name="phone" 
+                    value={formData.phone} 
+                    onChange={handleChange} 
+                    className={styles.formInput}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Address</label>
+                <input 
+                  type="text" 
+                  name="address" 
+                  value={formData.address} 
+                  onChange={handleChange} 
+                  className={styles.formInput}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Assigned Prison *</label>
+                <select 
+                  name="prison_id" 
+                  value={formData.prison_id} 
+                  onChange={handleChange} 
+                  required 
+                  className={styles.formSelect}
+                >
+                  <option value="">— None —</option>
+                  {prisons.map(p => (
+                    <option key={p.prison_id} value={p.prison_id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Password *</label>
+                <input 
+                  type="password" 
+                  name="password" 
+                  value={formData.password} 
+                  onChange={handleChange} 
+                  required 
+                  className={styles.formInput}
+                />
+              </div>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Full Name *</label>
-              <input type="text" name="name" value={formData.name} onChange={handleChange} required className={styles.formControl} />
+
+            <div className={styles.formActions}>
+              <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>Create Account</button>
+              <Link to="/officers" className={`${styles.btn} ${styles.btnOutline}`}>Cancel</Link>
             </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Email</label>
-              <input type="email" name="email" value={formData.email} onChange={handleChange} className={styles.formControl} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Phone</label>
-              <input type="text" name="phone" value={formData.phone} onChange={handleChange} className={styles.formControl} />
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Address</label>
-            <input type="text" name="address" value={formData.address} onChange={handleChange} className={styles.formControl} />
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Assigned Prison</label>
-              <select name="prison_id" value={formData.prison_id} onChange={handleChange} className={styles.formControl}>
-                <option value="">— None —</option>
-                {prisons.map(p => (
-                  <option key={p.prison_id} value={p.prison_id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '32px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '6px' }}>Password *</label>
-            <input type="password" name="password" value={formData.password} onChange={handleChange} required className={styles.formControl} />
-          </div>
-
-          <div style={{ display: 'flex', gap: '12px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
-            <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>Create Account</button>
-            <Link to="/officers" className={`${styles.btn} ${styles.btnOutline}`}>Cancel</Link>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
