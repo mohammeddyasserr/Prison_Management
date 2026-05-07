@@ -31,9 +31,11 @@ cd ..
 
 
 echo "Running Release Checker..."
-python check_release.py
+python backend/check_release.py
 echo ""
 
+echo "Waiting for servers to initialize..."
+sleep 5
 
 echo ""
 echo "========================================="

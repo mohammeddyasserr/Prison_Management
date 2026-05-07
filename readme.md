@@ -79,7 +79,7 @@ python database/initialize.py
 #### 6. Run the Release Checker
 Execute the script that checks and updates the status of inmates who are due for release:
 ```bash
-python check_release.py
+python backend/check_release.py
 ```
 
 #### 7. Run the Backend

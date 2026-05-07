@@ -35,10 +35,14 @@ cd ..
 
 echo Running Release Checker...
 if exist ".venv\Scripts\activate.bat" (
-    start "CPMS Release Checker" cmd /k ".venv\Scripts\activate.bat && python check_release.py"
+    start "CPMS Release Checker" cmd /k ".venv\Scripts\activate.bat && python backend\check_release.py"
 ) else (
-    start "CPMS Release Checker" cmd /k "python check_release.py"
+    start "CPMS Release Checker" cmd /k "python backend\check_release.py"
 )
+
+echo.
+echo Waiting for servers to initialize...
+timeout /t 5 /nobreak >nul
 
 echo =========================================
 echo Backend running at http://127.0.0.1:8000
