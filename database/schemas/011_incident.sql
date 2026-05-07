@@ -8,5 +8,5 @@ CREATE TABLE incident (
     occurred_at         TIMESTAMP       NOT NULL,
     reporting_officer   INTEGER         NOT NULL REFERENCES officer(national_id) ON DELETE RESTRICT,
     description         TEXT,
-    action_taken        TEXT            NOT NULL
+    action_taken        TEXT
 );

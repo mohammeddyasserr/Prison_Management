@@ -3,6 +3,7 @@ from sqlmodel import select, text
 import schemas
 import models
 from database import SessionDep
+from routers.disciplinary import _ensure_inmate_or_pending_exists
 
 router = APIRouter(
     prefix="/incidents",
@@ -204,7 +205,7 @@ def create_incident(request: schemas.IncidentCreate, db: SessionDep):
         "occurred_at":       request.occurred_at,
         "reporting_officer": request.reporting_officer,
         "description":       request.description,
-        "action_taken":      request.action_taken,
+        "action_taken":      request.action_taken or '',
     })
 
     new_id = result.fetchone().incident_id

@@ -29,7 +29,7 @@ useEffect(() => {
         }
 
         const officersUrl = (hasRole('manager') && prisonId)
-          ? `/api/staff/prison/${prisonId}`
+          ? `/api/staff/officers/prison/${prisonId}`
           : '/api/staff/officers';
         const [shifts, officers] = await Promise.all([
           hasRole('admin') || hasRole('manager')
@@ -56,7 +56,10 @@ useEffect(() => {
           name: `Block ${b.block_id} (${b.security_level})`
         }));
 
-        setData({ shifts, officers, blocks: flattenedBlocks });
+        const officerIds = new Set(officers.map(o => o.national_id));
+        const filteredShifts = shifts.filter(s => officerIds.has(s.officer_id));
+
+        setData({ shifts: filteredShifts, officers, blocks: flattenedBlocks });
         setLoading(false);
       } catch (err) {
         console.error('Error fetching data:', err);

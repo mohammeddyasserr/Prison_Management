@@ -40,7 +40,7 @@ class IncidentResponse(BaseModel):
     type:                 str
     occurred_at:          str
     description:          str | None = None
-    action_taken:         str
+    action_taken: str | None = None
     block_id:             int | None = None
     block_security_level: str | None = None
     prison_id:            int | None = None

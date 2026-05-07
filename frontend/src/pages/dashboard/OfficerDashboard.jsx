@@ -10,16 +10,45 @@ export const OfficerDashboard = () => {
 
   useEffect(() => {
     const nationalId = localStorage.getItem('userNationalId');
+    const prisonId = localStorage.getItem('prison_id');
     Promise.all([
       fetch(`/api/incidents/officer/${nationalId}`).then(r => r.json()).catch(() => []),
       fetch(`/api/shift/officer/${nationalId}`).then(r => r.json()).catch(() => []),
-    ]).then(([incidents, shifts]) => {
+      prisonId ? fetch(`/api/prison/${prisonId}/blocks-cells`).then(r => r.json()).catch(() => []) : Promise.resolve([]),
+      fetch(`/api/disciplinary/officer/${nationalId}`).then(r => r.json()).catch(() => []),
+    ]).then(([incidents, shifts, blocksCells, disciplinary]) => {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const recent_incidents = incidents.filter(inc => new Date(inc.occurred_at) >= sevenDaysAgo);
+
       const today = new Date().toISOString().split('T')[0];
       const my_shifts = shifts.filter(s => s.date >= today);
-      setData({ recent_incidents, my_shifts, assigned_blocks: [], cells: [], active_solitary: [] });
+
+      const assigned_blocks = blocksCells.map(b => ({
+        block_id: b.block_id,
+        block_name: `Block ${b.block_id} (${b.security_level})`,
+        security_level: b.security_level,
+      }));
+
+      const cells = blocksCells.flatMap(b =>
+        (b.cells || []).map(c => ({
+          block_id: b.block_id,
+          block_name: `Block ${b.block_id} (${b.security_level})`,
+          cell_id: c.cell_id,
+          current_occupancy: c.occupancy || 0,
+          capacity: c.capacity,
+        }))
+      );
+
+      const active_solitary = disciplinary
+        .filter(d => d.punishment_type === 'Solitary Confinement' && d.end_date && d.end_date >= today)
+        .map(d => ({
+          inmate_id: d.inmate_id,
+          full_name: d.inmate_name,
+          end_date: d.end_date,
+        }));
+
+      setData({ recent_incidents, my_shifts, assigned_blocks, cells, active_solitary });
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -136,8 +165,8 @@ export const OfficerDashboard = () => {
                   <tr key={i}>
                     <td>{s.date}</td>
                     <td><span className={`${styles.badge} ${styles.badgeInfo}`}>{s.shift_type}</span></td>
-                    <td>{s.block_name}</td>
-                    <td>{s.start_time} - {s.end_time}</td>
+                    <td>Block {s.block_id}</td>
+                    <td>{s.time_range || '—'}</td>
                   </tr>
                 ))}
               </tbody>

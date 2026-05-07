@@ -39,6 +39,23 @@ def create_shift(request: schemas.ShiftCreate, db: SessionDep):
     if isinstance(shift_data.get('date'), date):
         shift_data['date'] = shift_data['date'].isoformat()
 
+    # If a manager is creating the shift, validate officer and block belong to the same prison
+    if shift_data.get("manager_id"):
+        officer = db.execute(text(
+            "SELECT prison_id FROM officer WHERE national_id = :officer_id"
+        ), {"officer_id": shift_data["officer_id"]}).fetchone()
+        if not officer:
+            raise HTTPException(status_code=400, detail="Officer not found")
+
+        block = db.execute(text(
+            "SELECT prison_id FROM block WHERE block_id = :block_id"
+        ), {"block_id": shift_data["block_id"]}).fetchone()
+        if not block:
+            raise HTTPException(status_code=400, detail="Block not found")
+
+        if officer[0] != block[0]:
+            raise HTTPException(status_code=400, detail="Officer and block must belong to the same prison")
+
     try:
         result = db.execute(text("""
             INSERT INTO Shift (shift_type, officer_id, manager_id, block_id, date)
