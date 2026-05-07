@@ -14,10 +14,11 @@ class PunishmentType(str, Enum):
 class DisciplinaryCreate(SQLModel):
     inmate_id:       int
     incident_id:     int | None = None
-    imposed_by:      str                 
-    punishment_type: PunishmentType
-    solitary_days:   int | None = None   
+    imposed_by:      str
+    punishment_type: str
+    solitary_days:   int | None = None
     date_imposed:    date
+    end_date:        str | None = None
     notes:           str | None = None
 
 
@@ -39,8 +40,7 @@ class DisciplinaryResponse(SQLModel):
     officer_name:    str | None = None
     punishment_type: str
     solitary_days:   int | None = None
-    solitary_confinement_duration: int | None = None
     date_imposed:    date
-    end_date:        date | None = None
+    end_date:        str | None = None
     notes:           str | None = None
     prison_id:       int | None = None

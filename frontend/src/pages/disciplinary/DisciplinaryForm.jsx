@@ -10,9 +10,8 @@ export const DisciplinaryForm = () => {
     inmate_id: '',
     incident_id: '',
     punishment_type: 'Loss of Privileges',
-    solitary_confinement_duration: '',
+    solitary_days: '',
     date_imposed: '',
-    end_date: '',
     notes: '',
     imposed_by: localStorage.getItem('userNationalId') || ''
   });
@@ -72,7 +71,7 @@ export const DisciplinaryForm = () => {
         inmate_id: parseInt(formData.inmate_id, 10),
         incident_id: formData.incident_id ? parseInt(formData.incident_id, 10) : null,
         punishment_type: formData.punishment_type,
-        solitary_confinement_duration: formData.solitary_confinement_duration ? parseInt(formData.solitary_confinement_duration, 10) : null,
+        solitary_days: formData.solitary_days ? parseInt(formData.solitary_days, 10) : null,
         date_imposed: formData.date_imposed,
         end_date: formData.end_date || null,
         notes: formData.notes,
@@ -159,7 +158,7 @@ export const DisciplinaryForm = () => {
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Solitary Confinement Duration (days, max 30)</label>
-                <input type="number" name="solitary_confinement_duration" value={formData.solitary_confinement_duration} onChange={handleChange} min="0" max="30" className={styles.formInput} />
+                <input type="number" name="solitary_days" value={formData.solitary_days} onChange={handleChange} min="0" max="30" className={styles.formInput} />
               </div>
 
               <div className={styles.formRow}>

@@ -74,7 +74,7 @@ export const DisciplinaryList = () => {
                       ) : '—'}
                     </td>
                     <td>{log.punishment_type}</td>
-                    <td>{log.solitary_confinement_duration || log.solitary_days || '—'}</td>
+                    <td>{log.solitary_days || '—'}</td>
                     <td>{log.date_imposed}</td>
                     <td>{log.end_date || '—'}</td>
                     <td>{log.imposed_by_name || log.officer_name || '—'}</td>
