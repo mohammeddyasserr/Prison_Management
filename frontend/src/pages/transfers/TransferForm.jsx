@@ -14,23 +14,24 @@ export const TransferForm = () => {
   });
   const [data, setData] = useState({ inmates: [], prisons: [] });
   const [loading, setLoading] = useState(true);
+  const prisonId = localStorage.getItem('prison_id');
 
   useEffect(() => {
     const token = localStorage.getItem('userToken') || '';
     const headers = { 'Authorization': `Bearer ${token}` };
-    const prisonId = localStorage.getItem('prison_id');
+    const inmatesEndpoint = prisonId
+      ? `/api/inmates/prison/${prisonId}`
+      : '/api/inmates';
 
     Promise.all([
-      fetch('/api/inmates', { headers }).then(r => r.json()),
+      fetch(inmatesEndpoint, { headers }).then(r => r.json()),
       fetch('/api/prison', { headers }).then(r => r.json()),
-    ]).then(([allInmates, allPrisons]) => {
-      const inmates = prisonId
-        ? allInmates.filter(i => String(i.assigned_prison) === String(prisonId))
-        : allInmates;
+    ]).then(([inmates, allPrisons]) => {
+      const activeInmates = (Array.isArray(inmates) ? inmates : []).filter(i => i.status !== 'Released');
       const prisons = prisonId
         ? allPrisons.filter(p => String(p.prison_id) !== String(prisonId))
         : allPrisons;
-      setData({ inmates, prisons });
+      setData({ inmates: activeInmates, prisons });
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -49,8 +50,8 @@ export const TransferForm = () => {
         inmate_id: Number(formData.inmate_id),
         destination_prison: Number(formData.destination_prison),
         reason: formData.reason,
-        requesting_prison: Number(inmate?.assigned_prison || 0),
-        manager_id: Number(localStorage.getItem('userNationalId') || 0)
+        requesting_prison: Number(prisonId || inmate?.assigned_prison || 0),
+        manager_id: localStorage.getItem('userNationalId') || ''
       };
 
       const response = await fetch('/api/transfer', {

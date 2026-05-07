@@ -11,13 +11,32 @@ export const IncidentsList = () => {
   useEffect(() => {
     const token = localStorage.getItem('userToken') || '';
     const headers = { 'Authorization': `Bearer ${token}` };
-    const prisonId = localStorage.getItem('prison_id');
 
-    const url = prisonId ? `/api/incidents/prison/${prisonId}` : '/api/incidents';
-    fetch(url, { headers })
-      .then(r => r.json())
-      .then(data => { setIncidents(data); setLoading(false); })
-      .catch(() => setLoading(false));
+    const fetchIncidents = async () => {
+      try {
+        let prisonId;
+
+        if (hasRole('manager')) {
+          const nationalId = localStorage.getItem('userNationalId') || '';
+          const prisonRes = await fetch(`/api/prison/user/${nationalId}`, { headers });
+          const prisonData = await prisonRes.json();
+          prisonId = prisonData?.prison_id;
+        } else {
+          prisonId = localStorage.getItem('prison_id');
+        }
+
+        const url = prisonId ? `/api/incidents/prison/${prisonId}` : '/api/incidents';
+        const res = await fetch(url, { headers });
+        const data = await res.json();
+        setIncidents(data);
+      } catch (err) {
+        console.error('Error fetching incidents:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchIncidents();
   }, []);
 
   if (loading) return <div className={styles.emptyState}>Loading Incident Reports...</div>;

@@ -5,11 +5,32 @@ import styles from '../PrisonStyles.module.css';
 import { hasRole } from '../../services/authentication';
 
 export const HealthcareOverview = () => {
-  const prisonId = localStorage.getItem('prison_id');
+  const [prisonId, setPrisonId] = useState(null);
   const [data, setData] = useState({ doctors: [], visits: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const resolvePrison = async () => {
+      try {
+        let pid;
+        if (hasRole('manager')) {
+          const nationalId = localStorage.getItem('userNationalId') || '';
+          const prisonRes = await fetch(`/api/prison/user/${nationalId}`);
+          const prisonData = await prisonRes.json();
+          pid = prisonData?.prison_id;
+        } else {
+          pid = localStorage.getItem('prison_id');
+        }
+        setPrisonId(pid);
+      } catch {
+        setLoading(false);
+      }
+    };
+    resolvePrison();
+  }, []);
+
+  useEffect(() => {
+    if (prisonId === null) return;
     const doctorUrl = prisonId ? `/api/doctor/prison/${prisonId}` : '/api/doctor';
     const visitUrl = prisonId ? `/api/medical-visit/prison/${prisonId}` : '/api/medical-visit';
     Promise.all([

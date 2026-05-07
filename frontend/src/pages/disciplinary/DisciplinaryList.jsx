@@ -11,12 +11,32 @@ export const DisciplinaryList = () => {
   useEffect(() => {
     const token = localStorage.getItem('userToken') || '';
     const headers = { 'Authorization': `Bearer ${token}` };
-    const prisonId = localStorage.getItem('prison_id');
-    const url = prisonId ? `/api/disciplinary?prison_id=${prisonId}` : '/api/disciplinary';
-    fetch(url, { headers })
-      .then(r => r.json())
-      .then(data => { setLogs(data); setLoading(false); })
-      .catch(() => setLoading(false));
+
+    const fetchLogs = async () => {
+      try {
+        let prisonId;
+
+        if (hasRole('manager')) {
+          const nationalId = localStorage.getItem('userNationalId') || '';
+          const prisonRes = await fetch(`/api/prison/user/${nationalId}`, { headers });
+          const prisonData = await prisonRes.json();
+          prisonId = prisonData?.prison_id;
+        } else {
+          prisonId = localStorage.getItem('prison_id');
+        }
+
+        const url = prisonId ? `/api/disciplinary?prison_id=${prisonId}` : '/api/disciplinary';
+        const res = await fetch(url, { headers });
+        const data = await res.json();
+        setLogs(data);
+      } catch (err) {
+        console.error('Error fetching disciplinary records:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLogs();
   }, []);
 
   if (loading) return <div className={styles.emptyState}>Loading Disciplinary Records...</div>;

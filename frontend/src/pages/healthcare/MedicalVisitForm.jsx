@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../PrisonStyles.module.css';
-import { postForm } from '../../services/authentication';
+import { postForm, hasRole } from '../../services/authentication';
 import { useToast } from '../../context/ToastContext';
 
 export const MedicalVisitForm = () => {
   const navigate = useNavigate();
   const toast = useToast();
-  const prisonId = localStorage.getItem('prison_id');
   const [formData, setFormData] = useState({
     inmate_id: '',
     doctor_id: '',
@@ -19,16 +18,32 @@ export const MedicalVisitForm = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const inmateUrl = prisonId ? `/api/inmates/prison/${prisonId}` : '/api/inmates';
-    const doctorUrl = prisonId ? `/api/doctor/prison/${prisonId}` : '/api/doctor';
-    Promise.all([
-      fetch(inmateUrl).then(r => r.json()),
-      fetch(doctorUrl).then(r => r.json()),
-    ]).then(([inmates, doctors]) => {
-      setData({ inmates, doctors });
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, [prisonId]);
+    const resolveAndFetch = async () => {
+      try {
+        let pid;
+        if (hasRole('manager')) {
+          const nationalId = localStorage.getItem('userNationalId') || '';
+          const prisonRes = await fetch(`/api/prison/user/${nationalId}`);
+          const prisonData = await prisonRes.json();
+          pid = prisonData?.prison_id;
+        } else {
+          pid = localStorage.getItem('prison_id');
+        }
+        const inmateUrl = pid ? `/api/inmates/prison/${pid}` : '/api/inmates';
+        const doctorUrl = pid ? `/api/doctor/prison/${pid}` : '/api/doctor';
+        const [inmates, doctors] = await Promise.all([
+          fetch(inmateUrl).then(r => r.json()),
+          fetch(doctorUrl).then(r => r.json()),
+        ]);
+        setData({ inmates, doctors });
+      } catch {
+        // data fetch failed
+      } finally {
+        setLoading(false);
+      }
+    };
+    resolveAndFetch();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

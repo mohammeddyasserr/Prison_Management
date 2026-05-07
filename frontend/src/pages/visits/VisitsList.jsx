@@ -12,13 +12,32 @@ export const VisitsList = () => {
   useEffect(() => {
     const token = localStorage.getItem('userToken') || '';
     const headers = { 'Authorization': `Bearer ${token}` };
-    const prisonId = localStorage.getItem('prison_id');
 
-    const url = prisonId ? `/api/visit?prison_id=${prisonId}` : '/api/visit';
-    fetch(url, { headers })
-      .then(r => r.json())
-      .then(data => { setVisits(data); setLoading(false); })
-      .catch(() => setLoading(false));
+    const fetchVisits = async () => {
+      try {
+        let prisonId;
+
+        if (hasRole('manager')) {
+          const nationalId = localStorage.getItem('userNationalId') || '';
+          const prisonRes = await fetch(`/api/prison/user/${nationalId}`, { headers });
+          const prisonData = await prisonRes.json();
+          prisonId = prisonData?.prison_id;
+        } else {
+          prisonId = localStorage.getItem('prison_id');
+        }
+
+        const url = prisonId ? `/api/visit?prison_id=${prisonId}` : '/api/visit';
+        const res = await fetch(url, { headers });
+        const data = await res.json();
+        setVisits(data);
+      } catch (err) {
+        console.error('Error fetching visits:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVisits();
   }, []);
 
   if (loading) return <div className={styles.emptyState}>Loading Visit Requests...</div>;

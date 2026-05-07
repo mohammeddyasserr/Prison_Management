@@ -18,19 +18,28 @@ export const ShiftsList = () => {
 useEffect(() => {
     const fetchData = async () => {
       try {
-        const prisonId = localStorage.getItem('prison_id');
-const [shifts, officers] = await Promise.all([
-           hasRole('admin') || hasRole('manager')
-             ? prisonId
-               ? fetch(`/api/shift/prison/${prisonId}`).then(r => r.json())
-               : fetch('/api/shift').then(r => r.json())
-             : fetch(`/api/shift/officer/${localStorage.getItem('userNationalId')}`).then(r => r.json()),
-           prisonId
-             ? fetch(`/api/staff/officers/prison/${prisonId}`).then(r => r.json())
-             : [],
-         ]);
+        let prisonId;
+        if (hasRole('manager')) {
+          const nationalId = localStorage.getItem('userNationalId') || '';
+          const prisonRes = await fetch(`/api/prison/user/${nationalId}`);
+          const prisonData = await prisonRes.json();
+          prisonId = prisonData?.prison_id;
+        } else {
+          prisonId = localStorage.getItem('prison_id');
+        }
 
-        // Fetch prisons based on role
+        const officersUrl = (hasRole('manager') && prisonId)
+          ? `/api/staff/prison/${prisonId}`
+          : '/api/staff/officers';
+        const [shifts, officers] = await Promise.all([
+          hasRole('admin') || hasRole('manager')
+            ? prisonId
+              ? fetch(`/api/shift/prison/${prisonId}`).then(r => r.json())
+              : fetch('/api/shift').then(r => r.json())
+            : fetch(`/api/shift/officer/${localStorage.getItem('userNationalId')}`).then(r => r.json()),
+          fetch(officersUrl).then(r => r.json()),
+        ]);
+
         const allPrisons = await fetch('/api/prison').then(r => r.json());
         const prisons = hasRole('admin')
           ? allPrisons

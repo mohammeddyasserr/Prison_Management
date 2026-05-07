@@ -3,51 +3,70 @@ import { Eye, TrendingUp, ShieldAlert, RotateCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../PrisonStyles.module.css';
 
+import { hasRole } from '../../services/authentication';
+
 export const MLPredictions = () => {
   const [data, setData] = useState({ risk_scores: [], overcrowding: [], recidivism_scores: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/inmates').then(r => r.json()),
-      fetch('/api/prison').then(r => r.json()),
-      fetch('/api/disciplinary').then(r => r.json()),
-      fetch('/api/transfer').then(r => r.json()),
-    ]).then(([allInmates, prisons, disciplinary, transfers]) => {
-      const activeInmates = allInmates.filter(i => i.status !== 'Released');
+    const fetchData = async () => {
+      try {
+        let prisonId;
+        if (hasRole('manager')) {
+          const nationalId = localStorage.getItem('userNationalId') || '';
+          const prisonRes = await fetch(`/api/prison/user/${nationalId}`);
+          const prisonData = await prisonRes.json();
+          prisonId = prisonData?.prison_id;
+        }
 
-      const risk_scores = activeInmates.map(inmate => {
-        const incidentCount = disciplinary.filter(dl => dl.inmate_id === inmate.inmate_id).length;
-        const score = Math.min(100, incidentCount * 20);
-        const level = score >= 80 ? 'Critical' : score >= 60 ? 'High' : score >= 40 ? 'Medium' : 'Low';
-        return { inmate_id: inmate.inmate_id, name: inmate.full_name, score, level };
-      }).sort((a, b) => b.score - a.score);
+        const inmatesUrl = prisonId ? `/api/inmates/prison/${prisonId}` : '/api/inmates';
+        const [allInmates, prisons, disciplinary, transfers] = await Promise.all([
+          fetch(inmatesUrl).then(r => r.json()),
+          fetch('/api/prison').then(r => r.json()),
+          fetch('/api/disciplinary').then(r => r.json()),
+          fetch('/api/transfer').then(r => r.json()),
+        ]);
 
-      const overcrowding = prisons.map(prison => {
-        const current_rate = Math.round((prison.current_occupancy / prison.total_capacity) * 100);
-        const pendingIn = transfers.filter(t => t.destination_prison === prison.prison_id && t.status === 'Pending').length;
-        const releases_30 = activeInmates.filter(i => {
-          if (!i.release_date || i.assigned_prison !== prison.prison_id) return false;
-          const diff = (new Date(i.release_date) - new Date()) / (1000 * 60 * 60 * 24);
-          return diff <= 30 && diff >= 0;
-        }).length;
-        const forecast_30 = Math.min(100, Math.round(current_rate + (pendingIn * 2) - (releases_30 * 2)));
-        const forecast_60 = Math.min(100, Math.round(forecast_30 + (pendingIn * 1.5)));
-        const forecast_90 = Math.min(100, Math.round(forecast_60 + (pendingIn * 1)));
-        return { name: prison.name, current_rate, forecast_30, forecast_60, forecast_90, releases_30, pending_transfers_in: pendingIn };
-      });
+        const activeInmates = allInmates.filter(i => i.status !== 'Released');
 
-      const recidivism_scores = activeInmates.map(inmate => {
-        const discCount = disciplinary.filter(dl => dl.inmate_id === inmate.inmate_id).length;
-        const age = inmate.date_of_birth ? new Date().getFullYear() - new Date(inmate.date_of_birth).getFullYear() : 30;
-        const ageFactor = age < 25 ? 20 : age < 35 ? 10 : 0;
-        const score = Math.min(100, discCount * 25 + ageFactor);
-        return { inmate_id: inmate.inmate_id, name: inmate.full_name, score };
-      }).sort((a, b) => b.score - a.score);
+        const risk_scores = activeInmates.map(inmate => {
+          const incidentCount = disciplinary.filter(dl => dl.inmate_id === inmate.inmate_id).length;
+          const score = Math.min(100, incidentCount * 20);
+          const level = score >= 80 ? 'Critical' : score >= 60 ? 'High' : score >= 40 ? 'Medium' : 'Low';
+          return { inmate_id: inmate.inmate_id, name: inmate.full_name, score, level };
+        }).sort((a, b) => b.score - a.score);
 
-      setData({ risk_scores, overcrowding, recidivism_scores });
-      setLoading(false);
-    }).catch(() => setLoading(false));
+        const prisonsToShow = prisonId ? prisons.filter(p => p.prison_id === prisonId) : prisons;
+        const overcrowding = prisonsToShow.map(prison => {
+          const current_rate = Math.round((prison.current_occupancy / prison.total_capacity) * 100);
+          const pendingIn = transfers.filter(t => t.destination_prison === prison.prison_id && t.status === 'Pending').length;
+          const releases_30 = activeInmates.filter(i => {
+            if (!i.release_date || i.assigned_prison !== prison.prison_id) return false;
+            const diff = (new Date(i.release_date) - new Date()) / (1000 * 60 * 60 * 24);
+            return diff <= 30 && diff >= 0;
+          }).length;
+          const forecast_30 = Math.min(100, Math.round(current_rate + (pendingIn * 2) - (releases_30 * 2)));
+          const forecast_60 = Math.min(100, Math.round(forecast_30 + (pendingIn * 1.5)));
+          const forecast_90 = Math.min(100, Math.round(forecast_60 + (pendingIn * 1)));
+          return { name: prison.name, current_rate, forecast_30, forecast_60, forecast_90, releases_30, pending_transfers_in: pendingIn };
+        });
+
+        const recidivism_scores = activeInmates.map(inmate => {
+          const discCount = disciplinary.filter(dl => dl.inmate_id === inmate.inmate_id).length;
+          const age = inmate.date_of_birth ? new Date().getFullYear() - new Date(inmate.date_of_birth).getFullYear() : 30;
+          const ageFactor = age < 25 ? 20 : age < 35 ? 10 : 0;
+          const score = Math.min(100, discCount * 25 + ageFactor);
+          return { inmate_id: inmate.inmate_id, name: inmate.full_name, score };
+        }).sort((a, b) => b.score - a.score);
+
+        setData({ risk_scores, overcrowding, recidivism_scores });
+        setLoading(false);
+      } catch {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   if (loading) return <div className={styles.emptyState}>Loading ML Predictions...</div>;

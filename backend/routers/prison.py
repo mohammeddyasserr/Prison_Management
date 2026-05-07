@@ -159,6 +159,9 @@ def update_prison(id: int, request: schemas.PrisonCreate, db: SessionDep):
     if result.rowcount == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prison with id {id} not found")
 
+    if request.manager_id:
+        transfer_officer(request.manager_id, id, db)
+
     db.commit()
     return get_prison_by_id(id, db)
 

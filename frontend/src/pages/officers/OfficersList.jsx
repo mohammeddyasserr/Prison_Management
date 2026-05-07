@@ -19,10 +19,17 @@ export const OfficersList = () => {
           const data = await res.json();
           setOfficers(Array.isArray(data) ? data : []);
         } else if (hasRole('manager')) {
-          const prisonId = localStorage.getItem('prison_id') || '';
-          const res = await fetch(`/api/staff/prison/${prisonId}`, { headers });
-          const data = await res.json();
-          setOfficers(Array.isArray(data) ? data : []);
+          const nationalId = localStorage.getItem('userNationalId') || '';
+          const prisonRes = await fetch(`/api/prison/user/${nationalId}`, { headers });
+          const prisonData = await prisonRes.json();
+          const managedPrisonId = prisonData?.prison_id;
+          if (managedPrisonId) {
+            const res = await fetch(`/api/staff/prison/${managedPrisonId}`, { headers });
+            const data = await res.json();
+            setOfficers(Array.isArray(data) ? data : []);
+          } else {
+            setOfficers([]);
+          }
         } else {
           setOfficers([]);
         }

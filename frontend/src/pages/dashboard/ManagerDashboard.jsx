@@ -14,20 +14,26 @@ export const ManagerDashboard = () => {
       .then(r => r.json())
       .then(async prison => {
         const prison_id = prison.prison_id;
-        const [visits, incidents, transfers, blocksCells] = await Promise.all([
-          fetch('/api/visit').then(r => r.json()).catch(() => []),
+        const [visits, incidents, transfers, blocksCells, inmates] = await Promise.all([
+          fetch(`/api/visit?prison_id=${prison_id}`).then(r => r.json()).catch(() => []),
           fetch(`/api/incidents/prison/${prison_id}`).then(r => r.json()).catch(() => []),
-          fetch('/api/transfer').then(r => r.json()).catch(() => []),
+          fetch(`/api/transfer/prison/${prison_id}`).then(r => r.json()).catch(() => []),
           fetch(`/api/prison/${prison_id}/blocks-cells`).then(r => r.json()).catch(() => []),
+          fetch(`/api/inmates/prison/${prison_id}`).then(r => r.json()).catch(() => []),
         ]);
 
         const today = new Date();
         const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const pending_visits = visits.filter(v => v.status === 'Scheduled');
-        const upcoming_visits = visits.filter(v => v.status === 'Scheduled' && new Date(v.visit_date) >= today);
+        const pending_visits = visits.filter(v => v.status === 'Pending');
+        const upcoming_visits = visits.filter(v => v.status === 'Approved' && new Date(v.visit_date) >= today);
         const recent_incidents = incidents.filter(inc => new Date(inc.occurred_at) >= thirtyDaysAgo);
         const pending_transfers = transfers.filter(t => t.requesting_prison === prison_id && t.status === 'Pending');
+        const upcoming_releases = inmates.filter(i => {
+          if (!i.release_date || i.status === 'Released') return false;
+          const diff = (new Date(i.release_date) - new Date()) / (1000 * 60 * 60 * 24);
+          return diff <= 30 && diff >= 0;
+        });
 
         // Format blocks for display
         const blocks = blocksCells.map(b => ({
@@ -35,7 +41,7 @@ export const ManagerDashboard = () => {
           occupancy_rate: b.total_cells > 0 ? Math.round((b.total_inmates / b.total_cells) * 100) : 0,
         }));
 
-        setData({ prison, blocks, pending_visits, upcoming_visits, recent_incidents, pending_transfers, upcoming_releases: [], active_incidents: { count: recent_incidents.length } });
+        setData({ prison, blocks, pending_visits, upcoming_visits, recent_incidents, pending_transfers, upcoming_releases, active_incidents: { count: recent_incidents.length } });
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -143,7 +149,7 @@ export const ManagerDashboard = () => {
                   {data.upcoming_releases.map((inmate, i) => (
                     <tr key={i}>
                       <td>{inmate.full_name}</td>
-                      <td>{inmate.expected_release_date}</td>
+                      <td>{inmate.release_date}</td>
                     </tr>
                   ))}
                 </tbody>
