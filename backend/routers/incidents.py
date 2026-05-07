@@ -7,7 +7,6 @@ from database import SessionDep
 router = APIRouter(
     prefix="/incidents",
    tags=["incidents"]
-
 )
 
 BASE_SELECT = """
@@ -27,7 +26,13 @@ BASE_SELECT = """
             SELECT GROUP_CONCAT(inv.inmate_id)
             FROM incident_involvement inv
             WHERE inv.incident_id = i.incident_id
-        )                                 AS involved_inmate_ids
+        )                                 AS involved_inmate_ids,
+        (
+            SELECT GROUP_CONCAT(inm.full_name)
+            FROM incident_involvement inv
+            JOIN inmate inm ON inm.inmate_id = inv.inmate_id
+            WHERE inv.incident_id = i.incident_id
+        )                                 AS involved_inmate_names
     FROM incident i
     LEFT JOIN block   b  ON b.block_id    = i.block_id
     LEFT JOIN prison  p  ON p.prison_id   = b.prison_id
@@ -35,8 +40,6 @@ BASE_SELECT = """
 """
 
 
-
-# ------------------------------get all incidents----------------------------------------------
 @router.get("", response_model=list[schemas.IncidentResponse], status_code=status.HTTP_200_OK)
 def get_all_incidents(db: SessionDep):
     incidents = db.execute(text(f"""
@@ -46,7 +49,6 @@ def get_all_incidents(db: SessionDep):
     return incidents
 
 
-# ------------------------------get incidents by reporting officer----------------------------------------------
 @router.get("/officer/{national_id}", response_model=list[schemas.IncidentResponse], status_code=status.HTTP_200_OK, summary="Get all incidents reported by a specific officer")
 def get_incidents_by_officer(national_id: str, db: SessionDep):
     officer = db.execute(
@@ -56,7 +58,7 @@ def get_incidents_by_officer(national_id: str, db: SessionDep):
     if not officer:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Officer with national_id {national_id} not found")
- 
+
     incidents = db.execute(text(f"""
         {BASE_SELECT}
         WHERE i.reporting_officer = :national_id
@@ -65,7 +67,6 @@ def get_incidents_by_officer(national_id: str, db: SessionDep):
     return incidents
 
 
-# ------------------------------get incidents by prison------------------------------------------
 @router.get("/prison/{prison_id}", response_model=list[schemas.IncidentResponse], status_code=status.HTTP_200_OK, summary="Get all incidents that happened in a specific prison")
 def get_incidents_by_prison(prison_id: int, db: SessionDep):
     prison = db.execute(
@@ -75,7 +76,7 @@ def get_incidents_by_prison(prison_id: int, db: SessionDep):
     if not prison:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Prison with id {prison_id} not found")
- 
+
     incidents = db.execute(text(f"""
         {BASE_SELECT}
         WHERE b.prison_id = :prison_id
@@ -84,8 +85,6 @@ def get_incidents_by_prison(prison_id: int, db: SessionDep):
     return incidents
 
 
-
-# -------------------------get incidents by block----------------------------------------
 @router.get("/block/{block_id}", response_model=list[schemas.IncidentResponse], status_code=status.HTTP_200_OK, summary="Get all incidents that happened in a specific block")
 def get_incidents_by_block(block_id: int, db: SessionDep):
     block = db.execute(
@@ -95,7 +94,7 @@ def get_incidents_by_block(block_id: int, db: SessionDep):
     if not block:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Block with id {block_id} not found")
- 
+
     incidents = db.execute(text(f"""
         {BASE_SELECT}
         WHERE i.block_id = :block_id
@@ -103,7 +102,7 @@ def get_incidents_by_block(block_id: int, db: SessionDep):
     """), {"block_id": block_id}).fetchall()
     return incidents
 
-#----------------------------get incidents by inmate--------------------------------------------
+
 @router.get("/inmate/{inmate_id}", response_model=list[schemas.IncidentResponse], status_code=status.HTTP_200_OK, summary="Get all incidents for a specific inmate")
 def get_incidents_by_inmate(inmate_id: int, db: SessionDep):
     inmate = db.execute(
@@ -125,7 +124,6 @@ def get_incidents_by_inmate(inmate_id: int, db: SessionDep):
     return incidents
 
 
-#------------------------get single incident by id--------------------------------
 @router.get(
     "/{incident_id}",
     response_model=schemas.IncidentResponse,
@@ -137,21 +135,18 @@ def get_incident(incident_id: int, db: SessionDep):
         {BASE_SELECT}
         WHERE i.incident_id = :incident_id
     """), {"incident_id": incident_id}).fetchone()
- 
+
     if not incident:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Incident with id {incident_id} not found"
         )
- 
+
     return incident
 
 
-
-# -------------------------create new incident--------------------------------
 @router.post("", response_model=schemas.IncidentResponse, status_code=status.HTTP_201_CREATED)
 def create_incident(request: schemas.IncidentCreate, db: SessionDep):
-    # Validate officer
     officer = db.execute(
         text("SELECT national_id FROM officer WHERE national_id = :id"),
         {"id": request.reporting_officer}
@@ -160,7 +155,6 @@ def create_incident(request: schemas.IncidentCreate, db: SessionDep):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Officer {request.reporting_officer} not found")
 
-    # Validate block if provided
     if request.block_id:
         block = db.execute(
             text("SELECT block_id FROM block WHERE block_id = :id"),
@@ -170,10 +164,8 @@ def create_incident(request: schemas.IncidentCreate, db: SessionDep):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Block {request.block_id} not found")
 
-    # Insert incident
-    # We supply a fallback inmate_id (the first involved inmate) in case the DB still has the legacy NOT NULL constraint
     primary_inmate_id = request.involved_inmate_ids[0] if request.involved_inmate_ids else 1
-    
+
     try:
         result = db.execute(text("""
             INSERT INTO incident (
@@ -192,8 +184,7 @@ def create_incident(request: schemas.IncidentCreate, db: SessionDep):
             "action_taken":      request.action_taken,
             "inmate_id":         primary_inmate_id,
         })
-    except Exception as e:
-        # Fallback if the column truly doesn't exist anymore
+    except Exception:
         result = db.execute(text("""
             INSERT INTO incident (
                 type, block_id, occurred_at,
@@ -213,7 +204,6 @@ def create_incident(request: schemas.IncidentCreate, db: SessionDep):
 
     new_id = result.fetchone().incident_id
 
-    # Insert all involved inmates into incident_involvement
     for iid in set(request.involved_inmate_ids):
         db.execute(text("""
             INSERT OR IGNORE INTO incident_involvement (incident_id, inmate_id)
@@ -224,8 +214,6 @@ def create_incident(request: schemas.IncidentCreate, db: SessionDep):
     return get_incident(new_id, db)
 
 
-
-# -------------------------update incident--------------------------------
 @router.put(
     "/{incident_id}",
     response_model=schemas.IncidentResponse,
@@ -240,10 +228,9 @@ def update_incident(incident_id: int, request: schemas.IncidentUpdate, db: Sessi
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Incident {incident_id} not found")
- 
-    # Build SET clause only from fields that were sent
+
     update_data = request.model_dump(exclude_unset=True, exclude={"involved_inmate_ids"})
- 
+
     if update_data:
         set_clause = ", ".join(f"{col} = :{col}" for col in update_data.keys())
         update_data["incident_id"] = incident_id
@@ -251,8 +238,7 @@ def update_incident(incident_id: int, request: schemas.IncidentUpdate, db: Sessi
             UPDATE incident SET {set_clause}
             WHERE incident_id = :incident_id
         """), update_data)
- 
-    # Replace involvement list if provided
+
     if request.involved_inmate_ids is not None:
         db.execute(
             text("DELETE FROM incident_involvement WHERE incident_id = :id"),
@@ -263,13 +249,11 @@ def update_incident(incident_id: int, request: schemas.IncidentUpdate, db: Sessi
                 INSERT OR IGNORE INTO incident_involvement (incident_id, inmate_id)
                 VALUES (:incident_id, :inmate_id)
             """), {"incident_id": incident_id, "inmate_id": iid})
- 
+
     db.commit()
- 
     return get_incident(incident_id, db)
 
 
-# -------------------------delete incident--------------------------------
 @router.delete(
     "/{incident_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -283,6 +267,6 @@ def delete_incident(incident_id: int, db: SessionDep):
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Incident {incident_id} not found")
- 
+
     db.execute(text("DELETE FROM incident WHERE incident_id = :id"), {"id": incident_id})
     db.commit()

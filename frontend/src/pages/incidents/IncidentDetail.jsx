@@ -9,14 +9,23 @@ export const IncidentDetail = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/incidents/${id}`)
+    const token = localStorage.getItem('userToken') || '';
+    const headers = { 'Authorization': `Bearer ${token}` };
+    fetch(`/api/incidents/${id}`, { headers })
       .then(r => r.json())
       .then(incident => {
+        // Parse involved_inmate_ids and names from the comma-separated strings
+        const inmateIds = (incident.involved_inmate_ids || '').split(',').map(s => s.trim()).filter(Boolean);
+        const inmateNames = (incident.involved_inmate_names || '').split(',').map(s => s.trim()).filter(Boolean);
+        const involved_inmates = inmateIds.map((id, idx) => ({
+          inmate_id: id,
+          full_name: inmateNames[idx] || `Inmate ${id}`
+        }));
         setData({
           incident,
-          involved_inmates: incident.involved_inmates || [],
-          involved_staff: incident.involved_staff || [],
-          disciplinary: incident.disciplinary || [],
+          involved_inmates,
+          involved_staff: [],
+          disciplinary: [],
         });
         setLoading(false);
       })
@@ -45,21 +54,22 @@ export const IncidentDetail = () => {
 
       <div className={styles.prisonContent}>
         <header className={styles.prisonHeader}>
-          <h1 className={styles.prisonTitle}>Incident Report #{incident.incident_id}</h1>
-          <Link to="/incidents" className={`${styles.btn} ${styles.btnOutline}`}>
-            <ArrowLeft size={16} /> Back to Incidents
-          </Link>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h1 className={styles.prisonTitle}>Incident Report #{incident.incident_id}</h1>
+            <Link to="/incidents" className={`${styles.btn} ${styles.btnOutline}`}>
+              <ArrowLeft size={16} /> Back
+            </Link>
+          </div>
         </header>
 
         <div className={styles.ledger}>
           <div className={styles.ledgerTitle}><Info size={16} style={{ marginRight: '6px' }} /> Incident Details</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', padding: '14px 0' }}>
             <div><span style={{ color: '#7a6a58', fontSize: '0.7rem', textTransform: 'uppercase' }}>Type:</span><br /><span className={`${styles.badge} ${styles.badgeDanger}`}>{incident.type}</span></div>
-            <div><span style={{ color: '#7a6a58', fontSize: '0.7rem', textTransform: 'uppercase' }}>Date/Time:</span><br /><strong>{incident.date_time}</strong></div>
-            <div><span style={{ color: '#7a6a58', fontSize: '0.7rem', textTransform: 'uppercase' }}>Prison:</span><br /><strong>{incident.prison?.name || '—'}</strong></div>
-            <div><span style={{ color: '#7a6a58', fontSize: '0.7rem', textTransform: 'uppercase' }}>Block:</span><br /><strong>{incident.block?.name || '—'}</strong></div>
-            <div><span style={{ color: '#7a6a58', fontSize: '0.7rem', textTransform: 'uppercase' }}>Cell:</span><br /><strong>{incident.cell_id ? `#${incident.cell_id}` : '—'}</strong></div>
-            <div><span style={{ color: '#7a6a58', fontSize: '0.7rem', textTransform: 'uppercase' }}>Reporting Officer:</span><br /><strong>{incident.officer?.name || '—'}</strong></div>
+            <div><span style={{ color: '#7a6a58', fontSize: '0.7rem', textTransform: 'uppercase' }}>Date/Time:</span><br /><strong>{new Date(incident.occurred_at).toLocaleString()}</strong></div>
+            <div><span style={{ color: '#7a6a58', fontSize: '0.7rem', textTransform: 'uppercase' }}>Prison:</span><br /><strong>{incident.prison_name || '—'}</strong></div>
+            <div><span style={{ color: '#7a6a58', fontSize: '0.7rem', textTransform: 'uppercase' }}>Block:</span><br /><strong>{incident.block_id || '—'}</strong></div>
+            <div><span style={{ color: '#7a6a58', fontSize: '0.7rem', textTransform: 'uppercase' }}>Reporting Officer:</span><br /><strong>{incident.officer_name || '—'}</strong></div>
           </div>
         </div>
 
@@ -85,9 +95,7 @@ export const IncidentDetail = () => {
                       <td>{i.inmate_id}</td>
                       <td>{i.full_name}</td>
                       <td>
-                        <Link to={`/inmates/${i.inmate_id}`} className={`${styles.btn} ${styles.btnOutline}`}>
-                          View
-                        </Link>
+                        <Link to={`/inmates/${i.inmate_id}`} className={`${styles.btn} ${styles.btnOutline}`}>View</Link>
                       </td>
                     </tr>
                   ))}
@@ -130,9 +138,9 @@ export const IncidentDetail = () => {
                     <tr key={i}>
                       <td>{d.inmate_name}</td>
                       <td>{d.punishment_type}</td>
-                      <td>{d.solitary_confinement_duration ? `${d.solitary_confinement_duration} days` : '—'}</td>
+                      <td>{d.solitary_days ? `${d.solitary_days} days` : '—'}</td>
                       <td>{d.date_imposed}</td>
-                      <td>{d.imposed_by_name}</td>
+                      <td>{d.officer_name}</td>
                       <td style={{ fontSize: '0.8rem' }}>{d.notes || '—'}</td>
                     </tr>
                   ))}

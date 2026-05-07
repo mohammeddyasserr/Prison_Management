@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from '../PrisonStyles.module.css';
-import { postForm } from '../../services/authentication';
 import { useToast } from '../../context/ToastContext';
 
 export const DisciplinaryForm = () => {
@@ -11,23 +10,45 @@ export const DisciplinaryForm = () => {
     inmate_id: '',
     incident_id: '',
     punishment_type: 'Loss of Privileges',
-    solitary_days: 0,
+    solitary_confinement_duration: '',
     date_imposed: '',
-    imposed_by: '',
-    notes: ''
+    end_date: '',
+    notes: '',
+    imposed_by: localStorage.getItem('userNationalId') || ''
   });
-  const [data, setData] = useState({ inmates: [], incidents: [], staff: [] });
+  const [data, setData] = useState({ inmates: [], incidents: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/inmates').then(r => r.json()),
-      fetch('/api/incidents').then(r => r.json()),
-      fetch('/api/staff').then(r => r.json()),
-    ]).then(([inmates, incidents, staff]) => {
-      setData({ inmates, incidents, staff });
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    const token = localStorage.getItem('userToken') || '';
+    const headers = { 'Authorization': `Bearer ${token}` };
+    const prisonId = localStorage.getItem('prison_id');
+
+    const fetchData = async () => {
+      try {
+        const [inmatesRes, incidentsRes] = await Promise.all([
+          fetch('/api/inmates', { headers }),
+          fetch('/api/incidents', { headers }),
+        ]);
+        const allInmates = await inmatesRes.json();
+        const allIncidents = await incidentsRes.json();
+
+        const inmates = prisonId
+          ? allInmates.filter(i => String(i.assigned_prison) === String(prisonId))
+          : allInmates;
+
+        const incidents = prisonId
+          ? allIncidents.filter(i => String(i.prison_id) === String(prisonId))
+          : allIncidents;
+
+        setData({ inmates, incidents });
+      } catch (err) {
+        console.error('Error fetching form data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   const handleChange = (e) => {
@@ -46,18 +67,18 @@ export const DisciplinaryForm = () => {
         toast.error('Validation Error', 'Please select a date.');
         return;
       }
-      if (!formData.imposed_by) {
-        toast.error('Validation Error', 'Please select the imposing officer.');
-        return;
-      }
-      
+
       const payload = {
-        ...formData,
         inmate_id: parseInt(formData.inmate_id, 10),
         incident_id: formData.incident_id ? parseInt(formData.incident_id, 10) : null,
-        solitary_days: formData.solitary_days ? parseInt(formData.solitary_days, 10) : null,
+        punishment_type: formData.punishment_type,
+        solitary_confinement_duration: formData.solitary_confinement_duration ? parseInt(formData.solitary_confinement_duration, 10) : null,
+        date_imposed: formData.date_imposed,
+        end_date: formData.end_date || null,
+        notes: formData.notes,
         imposed_by: formData.imposed_by
       };
+
       const response = await fetch('/api/disciplinary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -105,100 +126,56 @@ export const DisciplinaryForm = () => {
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Inmate *</label>
-                <select 
-                  name="inmate_id" 
-                  value={formData.inmate_id} 
-                  onChange={handleChange} 
-                  required 
-                  className={styles.formSelect}
-                >
+                <select name="inmate_id" value={formData.inmate_id} onChange={handleChange} required className={styles.formSelect}>
                   <option value="">— Select Inmate —</option>
-                  {data.inmates.map(i => 
+                  {data.inmates.map(i => (
                     <option key={i.inmate_id} value={i.inmate_id}>
                       {i.full_name} (ID: {i.inmate_id})
                     </option>
-                  )}
+                  ))}
                 </select>
               </div>
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Linked Incident (optional)</label>
-                <select 
-                  name="incident_id" 
-                  value={formData.incident_id} 
-                  onChange={handleChange} 
-                  className={styles.formSelect}
-                >
+                <select name="incident_id" value={formData.incident_id} onChange={handleChange} className={styles.formSelect}>
                   <option value="">— No linked incident —</option>
-                  {data.incidents.map(inc => 
+                  {data.incidents.map(inc => (
                     <option key={inc.incident_id} value={inc.incident_id}>
-                      #{inc.incident_id} — {inc.type} ({inc.date_time})
+                      #{inc.incident_id} — {inc.type} ({new Date(inc.occurred_at).toLocaleDateString()})
                     </option>
-                  )}
+                  ))}
                 </select>
               </div>
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Punishment Type *</label>
-                <select 
-                  name="punishment_type" 
-                  value={formData.punishment_type} 
-                  onChange={handleChange} 
-                  required 
-                  className={styles.formSelect}
-                >
-                  {['Loss of Privileges', 'Solitary Confinement', 'Transfer to High-Security', 'Restricted Visits', 'Extra Labor', 'Other'].map(t => 
+                <select name="punishment_type" value={formData.punishment_type} onChange={handleChange} required className={styles.formSelect}>
+                  {['Loss of Privileges', 'Solitary Confinement', 'Transfer to High-Security', 'Restricted Visits', 'Extra Labor', 'Other'].map(t => (
                     <option key={t}>{t}</option>
-                  )}
+                  ))}
                 </select>
               </div>
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Solitary Confinement Duration (days, max 30)</label>
-                <input 
-                  type="number" 
-                  name="solitary_confinement_duration" 
-                  value={formData.solitary_confinement_duration} 
-                  onChange={handleChange} 
-                  min="0" 
-                  max="30" 
-                  className={styles.formInput}
-                />
+                <input type="number" name="solitary_confinement_duration" value={formData.solitary_confinement_duration} onChange={handleChange} min="0" max="30" className={styles.formInput} />
               </div>
 
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Date Imposed *</label>
-                  <input 
-                    type="date" 
-                    name="date_imposed" 
-                    value={formData.date_imposed} 
-                    onChange={handleChange} 
-                    required 
-                    className={styles.formInput}
-                  />
+                  <input type="date" name="date_imposed" value={formData.date_imposed} onChange={handleChange} required className={styles.formInput} />
                 </div>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>End Date</label>
-                  <input 
-                    type="date" 
-                    name="end_date" 
-                    value={formData.end_date} 
-                    onChange={handleChange} 
-                    className={styles.formInput}
-                  />
+                  <input type="date" name="end_date" value={formData.end_date} onChange={handleChange} className={styles.formInput} />
                 </div>
               </div>
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Notes</label>
-                <textarea 
-                  name="notes" 
-                  value={formData.notes} 
-                  onChange={handleChange} 
-                  rows="3" 
-                  className={styles.formTextarea}
-                ></textarea>
+                <textarea name="notes" value={formData.notes} onChange={handleChange} rows="3" className={styles.formTextarea}></textarea>
               </div>
             </div>
 

@@ -84,12 +84,20 @@ export const TransfersList = () => {
         {[0, 1, 2].map((bar) => <div key={bar} className={styles.bar} />)}
       </div>
 
-      <div className={styles.prisonContent}>
-        <header className={styles.prisonHeader}>
-          <h1 className={styles.prisonTitle}>Transfer Requests</h1>
-        </header>
+       <div className={styles.prisonContent}>
+         <header className={styles.prisonHeader}>
+           <h1 className={styles.prisonTitle}>Transfer Requests</h1>
+         </header>
 
-        <div className={styles.ledger}>
+         {hasRole('manager') && (
+           <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+             <Link to="/transfers/add" className={`${styles.btn} ${styles.btnPrimary}`}>
+               <Plus size={16} /> Request Transfer
+             </Link>
+           </div>
+         )}
+
+         <div className={styles.ledger}>
           <div className={styles.ledgerTitle}>Inmate Transfers</div>
           <div className={styles.tableWrapper}>
             <table className={styles.table} style={{ tableLayout: 'fixed', width: '100%' }}>
@@ -174,16 +182,8 @@ export const TransfersList = () => {
               </tbody>
             </table>
           </div>
-        </div>
-
-        {hasRole('manager') && (
-          <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <Link to="/transfers/add" className={`${styles.btn} ${styles.btnPrimary}`}>
-              <Plus size={16} /> Request Transfer
-            </Link>
-          </div>
-        )}
-      </div>
+         </div>
+       </div>
     </div>
   );
 };

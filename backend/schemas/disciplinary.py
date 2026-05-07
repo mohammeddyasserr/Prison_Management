@@ -33,12 +33,14 @@ class DisciplinaryUpdate(SQLModel):
 
 class DisciplinaryResponse(SQLModel):
     inmate_id:       int
-    inmate_name:     str | None = None   
+    inmate_name:     str | None = None
     incident_id:     int | None = None
     imposed_by:      str
-    officer_name:    str | None = None   
+    officer_name:    str | None = None
     punishment_type: str
     solitary_days:   int | None = None
+    solitary_confinement_duration: int | None = None
     date_imposed:    date
-    end_date:        date | None = None  
+    end_date:        date | None = None
     notes:           str | None = None
+    prison_id:       int | None = None

@@ -9,7 +9,12 @@ export const IncidentsList = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/incidents')
+    const token = localStorage.getItem('userToken') || '';
+    const headers = { 'Authorization': `Bearer ${token}` };
+    const prisonId = localStorage.getItem('prison_id');
+
+    const url = prisonId ? `/api/incidents/prison/${prisonId}` : '/api/incidents';
+    fetch(url, { headers })
       .then(r => r.json())
       .then(data => { setIncidents(data); setLoading(false); })
       .catch(() => setLoading(false));
@@ -37,51 +42,53 @@ export const IncidentsList = () => {
           <h1 className={styles.prisonTitle}>Incident Reports</h1>
         </header>
 
-        <div className={styles.ledger}>
-          <div className={styles.ledgerTitle}>Security Incidents</div>
+         {hasRole('officer') && (
+           <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+             <Link to="/incidents/add" className={`${styles.btn} ${styles.btnPrimary}`}>
+               <Plus size={16} /> Report Incident
+             </Link>
+           </div>
+         )}
+
+         <div className={styles.ledger}>
+           <div className={styles.ledgerTitle}>Security Incidents</div>
           <div className={styles.tableWrapper}>
             <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Type</th>
-                  <th>Date/Time</th>
-                  <th>Prison</th>
-                  <th>Block</th>
-                  <th>Officer</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {incidents.length > 0 ? incidents.map((inc) => (
-                  <tr key={inc.incident_id}>
-                    <td>{inc.incident_id}</td>
-                    <td><span className={`${styles.badge} ${styles.badgeDanger}`}>{inc.type}</span></td>
-                    <td>{inc.date_time}</td>
-                    <td>{inc.prison_name || '—'}</td>
-                    <td>{inc.block_name || '—'}</td>
-                    <td>{inc.officer_name || '—'}</td>
-                    <td>
-                      <Link to={`/incidents/${inc.incident_id}`} className={`${styles.btn} ${styles.btnOutline}`}>
-                        <Eye size={14} /> View
-                      </Link>
-                    </td>
-                  </tr>
-                )) : (
-                  <tr><td colSpan="7" className={styles.emptyState}>No incidents reported.</td></tr>
-                )}
+               <thead>
+                 <tr>
+                   <th>ID</th>
+                   <th>Type</th>
+                   <th>Date/Time</th>
+                   <th>Prison</th>
+                   <th>Block</th>
+                   <th>Inmates Involved</th>
+                   <th>Officer</th>
+                   <th>Actions</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {incidents.length > 0 ? incidents.map((inc) => (
+                   <tr key={inc.incident_id}>
+                     <td>{inc.incident_id}</td>
+                     <td><span className={`${styles.badge} ${styles.badgeDanger}`}>{inc.type}</span></td>
+                     <td>{new Date(inc.occurred_at).toLocaleString()}</td>
+                     <td>{inc.prison_name || '—'}</td>
+                     <td>{inc.block_id || '—'}</td>
+                     <td style={{ maxWidth: '180px', fontSize: '0.82rem' }}>{inc.involved_inmate_names || '—'}</td>
+                     <td>{inc.officer_name || '—'}</td>
+                     <td>
+                       <Link to={`/incidents/${inc.incident_id}`} className={`${styles.btn} ${styles.btnOutline}`}>
+                         <Eye size={14} /> View
+                       </Link>
+                     </td>
+                   </tr>
+                 )) : (
+                   <tr><td colSpan="8" className={styles.emptyState}>No incidents reported.</td></tr>
+                 )}
               </tbody>
             </table>
           </div>
-        </div>
-
-        {hasRole('officer') && (
-          <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <Link to="/incidents/add" className={`${styles.btn} ${styles.btnPrimary}`}>
-              <Plus size={16} /> Report Incident
-            </Link>
-          </div>
-        )}
+         </div>
       </div>
     </div>
   );
