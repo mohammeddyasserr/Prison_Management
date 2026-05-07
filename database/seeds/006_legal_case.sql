@@ -67,7 +67,7 @@ sentence_duration_years, sentence_duration_months, sentence_duration_days
 ('Drug Offense', 37, 'Fayoum Court', 7, 0, 0),
 ('Burglary', 38, 'Fayoum Court', 4, 0, 0),
 ('Arson', 39, 'Fayoum Court', 10, 0, 0),
-('Murder', 40, 'Fayoum Court', 18, 0, 0);
+('Murder', 40, 'Fayoum Court', 18, 0, 0),
 
 -- =========================
 -- Pending inmates
