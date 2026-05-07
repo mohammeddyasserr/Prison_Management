@@ -1,16 +1,21 @@
-INSERT INTO block (prison_id, security_level) VALUES 
+INSERT INTO block (prison_id, security_level) VALUES
+
+-- Prison 1
 (1, 'High'),
-(2, 'Medium'),
-(3, 'High'),
+(1, 'Medium'),
+
+-- Prison 2
+(2, 'Low'),
+(2, 'High'),
+
+-- Prison 3
+(3, 'Medium'),
+(3, 'Low'),
+
+-- Prison 4
 (4, 'High'),
-(5, 'High'),
-(6, 'High'),
-(7, 'High'),
-(8, 'Medium'),
-(9, 'Medium'),
-(10, 'Low'),
-(11, 'Low'),
-(12, 'Medium'),
-(13, 'Low'),
-(14, 'Medium'),
-(15, 'High');
+(4, 'Low'),
+
+-- Prison 5
+(5, 'Medium'),
+(5, 'High');
