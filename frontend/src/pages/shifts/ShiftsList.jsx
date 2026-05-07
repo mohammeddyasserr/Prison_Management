@@ -15,17 +15,29 @@ export const ShiftsList = () => {
     date: '',
   });
 
-  useEffect(() => {
+useEffect(() => {
     const fetchData = async () => {
       try {
-        const [shifts, officers, prisons] = await Promise.all([
-          fetch('/api/shift').then(r => r.json()),
-          fetch('/api/staff').then(r => r.json()),
-          fetch('/api/prison').then(r => r.json()),
+        const prisonId = localStorage.getItem('prison_id');
+        const [shifts, officers] = await Promise.all([
+          hasRole('admin') || hasRole('manager')
+            ? prisonId
+              ? fetch(`/api/shift/prison/${prisonId}`).then(r => r.json())
+              : fetch('/api/shift').then(r => r.json())
+            : fetch(`/api/shift/officer/${localStorage.getItem('userNationalId')}`).then(r => r.json()),
+          fetch('/api/staff/officers').then(r => r.json()),
         ]);
 
+        // Fetch prisons based on role
+        const allPrisons = await fetch('/api/prison').then(r => r.json());
+        const prisons = hasRole('admin')
+          ? allPrisons
+          : prisonId
+            ? allPrisons.filter(p => p.prison_id == prisonId)
+            : [];
+
         const allBlocks = await Promise.all(
-          prisons.map(p => fetch(`/api/prison/${p.prison_id}/blocks-cells`).then(r => r.json()))
+          prisons.map(p => fetch(`/api/block/prison/${p.prison_id}`).then(r => r.json()))
         );
 
         const flattenedBlocks = allBlocks.flat().map(b => ({
@@ -117,8 +129,8 @@ export const ShiftsList = () => {
           <p className={styles.prisonSubtitle}>Assign and manage officer shifts</p>
         </div>
 
-        {(hasRole('manager') || hasRole('admin')) && (
-          <div className={styles.formCard} style={{ marginBottom: '22px' }}>
+{hasRole('manager') && (
+           <div className={styles.formCard} style={{ marginBottom: '22px' }}>
             <div className={styles.formSection}>
               <p className={styles.formSectionTitle}>Assign Shift</p>
               <form onSubmit={handleSubmit} className={styles.prisonForm}>
@@ -164,44 +176,44 @@ export const ShiftsList = () => {
           <p className={styles.ledgerTitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Calendar size={18} color="#7a0000" /> Shift Schedule
           </p>
-          <div className={styles.tableWrapper}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  {!hasRole('officer') && <th>Officer</th>}
-                  <th>Block</th>
-                  {hasRole('admin') && <th>Prison</th>}
-                  <th>Shift</th>
-                  <th>Date</th>
-                  <th>Time</th>
-                  {hasRole('manager') && <th>Actions</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {data.shifts.length > 0 ? data.shifts.map((s) => (
-                  <tr key={s.shift_id}>
-                    <td>{s.shift_id}</td>
-                    {!hasRole('officer') && <td>{s.officer_name || '—'}</td>}
-                    <td>Block {s.block_id}</td>
-                    {hasRole('admin') && <td>{s.prison_name || '—'}</td>}
-                    <td><span className={`${styles.badge} ${styles.badgeInfo}`}>{s.shift_type}</span></td>
-                    <td>{s.date}</td>
-                    <td>{s.time_range}</td>
-                    {hasRole('manager') && (
-                      <td className={styles.actions}>
-                        <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => removeShift(s.shift_id)}>
-                          <Trash2 size={14} /> Remove
-                        </button>
-                      </td>
-                    )}
+<div className={styles.tableWrapper}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Officer</th>
+                    {hasRole('admin') && <th>Prison</th>}
+                    <th>Block</th>
+                    <th>Shift</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    {hasRole('manager') && <th>Actions</th>}
                   </tr>
-                )) : (
-                  <tr><td colSpan={hasRole('manager') ? '7' : hasRole('admin') ? '7' : '5'} style={{ textAlign: 'center', padding: '20px', color: '#7a6a58' }}>No shifts found.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {data.shifts.length > 0 ? data.shifts.map((s) => (
+                    <tr key={s.shift_id}>
+                      <td>{s.shift_id}</td>
+                      <td>{s.officer_name || '—'}</td>
+                      {hasRole('admin') && <td>{s.prison_name || '—'}</td>}
+                      <td>Block {s.block_id}</td>
+                      <td><span className={`${styles.badge} ${styles.badgeInfo}`}>{s.shift_type}</span></td>
+                      <td>{s.date}</td>
+                      <td>{s.time_range}</td>
+                      {hasRole('manager') && (
+                        <td className={styles.actions}>
+                          <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => removeShift(s.shift_id)}>
+                            <Trash2 size={14} /> Remove
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  )) : (
+                    <tr><td colSpan={hasRole('manager') ? (hasRole('admin') ? '8' : '7') : (hasRole('admin') ? '7' : '6')} style={{ textAlign: 'center', padding: '20px', color: '#7a6a58' }}>No shifts found.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
         </div>
       </div>
     </div>
