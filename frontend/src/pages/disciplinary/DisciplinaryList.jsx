@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../PrisonStyles.module.css';
+import { hasRole } from '../../services/authentication';
 
 export const DisciplinaryList = () => {
   const [logs, setLogs] = useState([]);
@@ -40,11 +41,13 @@ export const DisciplinaryList = () => {
           <h1 className={styles.prisonTitle}>Disciplinary Records</h1>
         </header>
 
-        <div style={{ textAlign: 'right', marginBottom: '20px' }}>
-          <Link to="/disciplinary/add" className={`${styles.btn} ${styles.btnPrimary}`}>
-            <Plus size={16} /> Add Record
-          </Link>
-        </div>
+        {hasRole('officer') && (
+          <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+            <Link to="/disciplinary/add" className={`${styles.btn} ${styles.btnPrimary}`}>
+              <Plus size={16} /> Add Record
+            </Link>
+          </div>
+        )}
 
         <div className={styles.ledger}>
           <div className={styles.ledgerTitle}>Disciplinary Records</div>

@@ -28,16 +28,37 @@ BASE_SELECT = """
             WHERE inv.incident_id = i.incident_id
         )                                 AS involved_inmate_ids,
         (
-            SELECT GROUP_CONCAT(inm.full_name)
+            SELECT GROUP_CONCAT(COALESCE(inm.full_name, pim.full_name))
             FROM incident_involvement inv
-            JOIN inmate inm ON inm.inmate_id = inv.inmate_id
+            LEFT JOIN inmate inm ON inm.inmate_id = inv.inmate_id
+            LEFT JOIN pending_inmate pim ON pim.pending_inmate_id = inv.inmate_id
             WHERE inv.incident_id = i.incident_id
+            AND COALESCE(inm.full_name, pim.full_name) IS NOT NULL
         )                                 AS involved_inmate_names
     FROM incident i
     LEFT JOIN block   b  ON b.block_id    = i.block_id
     LEFT JOIN prison  p  ON p.prison_id   = b.prison_id
     LEFT JOIN officer o  ON o.national_id = i.reporting_officer
 """
+
+def _ensure_inmate_or_pending_exists(db: SessionDep, inmate_id: int) -> None:
+    exists = db.execute(
+        text("""
+            SELECT 1
+            FROM (
+                SELECT inmate_id AS id FROM inmate WHERE inmate_id = :id
+                UNION ALL
+                SELECT pending_inmate_id AS id FROM pending_inmate WHERE pending_inmate_id = :id
+            )
+            LIMIT 1
+        """),
+        {"id": inmate_id},
+    ).fetchone()
+    if not exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Inmate with id {inmate_id} not found (neither active nor pending)",
+        )
 
 
 @router.get("", response_model=list[schemas.IncidentResponse], status_code=status.HTTP_200_OK)
@@ -105,13 +126,7 @@ def get_incidents_by_block(block_id: int, db: SessionDep):
 
 @router.get("/inmate/{inmate_id}", response_model=list[schemas.IncidentResponse], status_code=status.HTTP_200_OK, summary="Get all incidents for a specific inmate")
 def get_incidents_by_inmate(inmate_id: int, db: SessionDep):
-    inmate = db.execute(
-        text("SELECT inmate_id FROM inmate WHERE inmate_id = :id"),
-        {"id": inmate_id}
-    ).fetchone()
-    if not inmate:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Inmate with id {inmate_id} not found")
+    _ensure_inmate_or_pending_exists(db, inmate_id)
 
     incidents = db.execute(text(f"""
         {BASE_SELECT}
@@ -164,47 +179,27 @@ def create_incident(request: schemas.IncidentCreate, db: SessionDep):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Block {request.block_id} not found")
 
-    primary_inmate_id = request.involved_inmate_ids[0] if request.involved_inmate_ids else 1
-
-    try:
-        result = db.execute(text("""
-            INSERT INTO incident (
-                type, block_id, occurred_at,
-                reporting_officer, description, action_taken, inmate_id
-            ) VALUES (
-                :type, :block_id, :occurred_at,
-                :reporting_officer, :description, :action_taken, :inmate_id
-            ) RETURNING incident_id
-        """), {
-            "type":              request.type,
-            "block_id":          request.block_id,
-            "occurred_at":       request.occurred_at,
-            "reporting_officer": request.reporting_officer,
-            "description":       request.description,
-            "action_taken":      request.action_taken,
-            "inmate_id":         primary_inmate_id,
-        })
-    except Exception:
-        result = db.execute(text("""
-            INSERT INTO incident (
-                type, block_id, occurred_at,
-                reporting_officer, description, action_taken
-            ) VALUES (
-                :type, :block_id, :occurred_at,
-                :reporting_officer, :description, :action_taken
-            ) RETURNING incident_id
-        """), {
-            "type":              request.type,
-            "block_id":          request.block_id,
-            "occurred_at":       request.occurred_at,
-            "reporting_officer": request.reporting_officer,
-            "description":       request.description,
-            "action_taken":      request.action_taken,
-        })
+    result = db.execute(text("""
+        INSERT INTO incident (
+            type, block_id, occurred_at,
+            reporting_officer, description, action_taken
+        ) VALUES (
+            :type, :block_id, :occurred_at,
+            :reporting_officer, :description, :action_taken
+        ) RETURNING incident_id
+    """), {
+        "type":              request.type,
+        "block_id":          request.block_id,
+        "occurred_at":       request.occurred_at,
+        "reporting_officer": request.reporting_officer,
+        "description":       request.description,
+        "action_taken":      request.action_taken,
+    })
 
     new_id = result.fetchone().incident_id
 
     for iid in set(request.involved_inmate_ids):
+        _ensure_inmate_or_pending_exists(db, iid)
         db.execute(text("""
             INSERT OR IGNORE INTO incident_involvement (incident_id, inmate_id)
             VALUES (:incident_id, :inmate_id)
@@ -245,6 +240,7 @@ def update_incident(incident_id: int, request: schemas.IncidentUpdate, db: Sessi
             {"id": incident_id}
         )
         for iid in set(request.involved_inmate_ids):
+            _ensure_inmate_or_pending_exists(db, iid)
             db.execute(text("""
                 INSERT OR IGNORE INTO incident_involvement (incident_id, inmate_id)
                 VALUES (:incident_id, :inmate_id)

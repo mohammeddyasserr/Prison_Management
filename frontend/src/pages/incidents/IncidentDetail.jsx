@@ -7,35 +7,42 @@ export const IncidentDetail = () => {
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [disciplinary, setDisciplinary] = useState([]);
+  const [discLoading, setDiscLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('userToken') || '';
     const headers = { 'Authorization': `Bearer ${token}` };
+
+    // Fetch incident details
     fetch(`/api/incidents/${id}`, { headers })
       .then(r => r.json())
       .then(incident => {
-        // Parse involved_inmate_ids and names from the comma-separated strings
         const inmateIds = (incident.involved_inmate_ids || '').split(',').map(s => s.trim()).filter(Boolean);
         const inmateNames = (incident.involved_inmate_names || '').split(',').map(s => s.trim()).filter(Boolean);
         const involved_inmates = inmateIds.map((id, idx) => ({
           inmate_id: id,
           full_name: inmateNames[idx] || `Inmate ${id}`
         }));
-        setData({
-          incident,
-          involved_inmates,
-          involved_staff: [],
-          disciplinary: [],
-        });
+        setData({ incident, involved_inmates, involved_staff: [] });
         setLoading(false);
       })
       .catch(() => setLoading(false));
+
+    // Fetch linked disciplinary records
+    fetch(`/api/disciplinary/incident/${id}`, { headers })
+      .then(r => r.json())
+      .then(records => {
+        setDisciplinary(Array.isArray(records) ? records : []);
+        setDiscLoading(false);
+      })
+      .catch(() => setDiscLoading(false));
   }, [id]);
 
   if (loading) return <div className={styles.emptyState}>Loading Incident Report...</div>;
   if (!data || !data.incident) return <div className={styles.emptyState}>Incident not found.</div>;
 
-  const { incident, involved_inmates, involved_staff, disciplinary } = data;
+  const { incident, involved_inmates, involved_staff } = data;
 
   return (
     <div className={styles.prisonContainer}>
@@ -125,30 +132,43 @@ export const IncidentDetail = () => {
           </div>
         )}
 
-        {disciplinary.length > 0 && (
-          <div className={styles.ledger}>
-            <div className={styles.ledgerTitle}><AlertTriangle size={16} style={{ marginRight: '6px' }} /> Related Disciplinary Actions</div>
+        <div className={styles.ledger}>
+          <div className={styles.ledgerTitle}>
+            <AlertTriangle size={16} style={{ marginRight: '6px' }} /> Linked Disciplinary Actions
+          </div>
+          {discLoading ? (
+            <p style={{ padding: '12px', color: '#7a6a58', fontSize: '0.9rem' }}>Loading disciplinary records…</p>
+          ) : disciplinary.length === 0 ? (
+            <p style={{ padding: '12px', color: '#7a6a58', fontSize: '0.9rem' }}>No disciplinary actions linked to this incident.</p>
+          ) : (
             <div className={styles.tableWrapper}>
               <table className={styles.table}>
                 <thead>
-                  <tr><th>Inmate</th><th>Punishment</th><th>Duration</th><th>Date</th><th>Imposed By</th><th>Notes</th></tr>
+                  <tr>
+                    <th>Inmate</th>
+                    <th>Punishment</th>
+                    <th>Duration</th>
+                    <th>Date Imposed</th>
+                    <th>Imposed By</th>
+                    <th>Notes</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {disciplinary.map((d, i) => (
-                    <tr key={i}>
-                      <td>{d.inmate_name}</td>
-                      <td>{d.punishment_type}</td>
+                    <tr key={d.disciplinary_id ?? i}>
+                      <td>{d.inmate_name ?? d.inmate_id ?? '—'}</td>
+                      <td>{d.punishment_type ?? '—'}</td>
                       <td>{d.solitary_days ? `${d.solitary_days} days` : '—'}</td>
-                      <td>{d.date_imposed}</td>
-                      <td>{d.officer_name}</td>
+                      <td>{d.date_imposed ? new Date(d.date_imposed).toLocaleDateString() : '—'}</td>
+                      <td>{d.officer_name ?? d.imposed_by ?? '—'}</td>
                       <td style={{ fontSize: '0.8rem' }}>{d.notes || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

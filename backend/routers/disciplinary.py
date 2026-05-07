@@ -19,13 +19,33 @@ BASE_SELECT = """
         d.date_imposed,
         DATE(d.date_imposed, '+' || COALESCE(d.solitary_days, 0) || ' days') AS end_date,
         d.notes,
-        im.full_name                                        AS inmate_name,
-        im.assigned_prison                                  AS prison_id,
+        COALESCE(im.full_name, pim.full_name)               AS inmate_name,
+        COALESCE(im.assigned_prison, pim.assigned_prison)   AS prison_id,
         o.name                                              AS officer_name
     FROM disciplinary_log d
-    LEFT JOIN inmate  im ON im.inmate_id  = d.inmate_id
+    LEFT JOIN inmate  im  ON im.inmate_id  = d.inmate_id
+    LEFT JOIN pending_inmate pim ON pim.pending_inmate_id = d.inmate_id
     LEFT JOIN officer o  ON o.national_id = d.imposed_by
 """
+ 
+def _ensure_inmate_or_pending_exists(db: SessionDep, inmate_id: int) -> None:
+    exists = db.execute(
+        text("""
+            SELECT 1
+            FROM (
+                SELECT inmate_id AS id FROM inmate WHERE inmate_id = :id
+                UNION ALL
+                SELECT pending_inmate_id AS id FROM pending_inmate WHERE pending_inmate_id = :id
+            )
+            LIMIT 1
+        """),
+        {"id": inmate_id},
+    ).fetchone()
+    if not exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Inmate with id {inmate_id} not found (neither active nor pending)",
+        )
  
  
 def get_log_or_404(inmate_id: int, imposed_by: str, incident_id: int | None, db):
@@ -52,7 +72,7 @@ def get_all_disciplinary(db: SessionDep, prison_id: int | None = None):
     if prison_id:
         records = db.execute(text(f"""
             {BASE_SELECT}
-            WHERE im.assigned_prison = :prison_id
+            WHERE COALESCE(im.assigned_prison, pim.assigned_prison) = :prison_id
             ORDER BY d.date_imposed DESC
         """), {"prison_id": prison_id}).fetchall()
     else:
@@ -65,13 +85,7 @@ def get_all_disciplinary(db: SessionDep, prison_id: int | None = None):
 # ------------------------------get disciplinary logs for a specific inmate ---------------------------------------------
 @router.get("/inmate/{inmate_id}", response_model=list[schemas.DisciplinaryResponse], status_code=status.HTTP_200_OK, summary="Get all disciplinary logs for a specific inmate")
 def get_disciplinary_by_inmate(inmate_id: int, db: SessionDep):
-    inmate = db.execute(
-        text("SELECT inmate_id FROM inmate WHERE inmate_id = :id"),
-        {"id": inmate_id}
-    ).fetchone()
-    if not inmate:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Inmate with id {inmate_id} not found")
+    _ensure_inmate_or_pending_exists(db, inmate_id)
  
     records = db.execute(text(f"""
         {BASE_SELECT}
@@ -106,13 +120,7 @@ def get_disciplinary_by_incident(incident_id: int, db: SessionDep):
 @router.post("", response_model=schemas.DisciplinaryResponse, status_code=status.HTTP_201_CREATED)
 def create_disciplinary(request: schemas.DisciplinaryCreate, db: SessionDep):
     # Validate inmate
-    inmate = db.execute(
-        text("SELECT inmate_id FROM inmate WHERE inmate_id = :id"),
-        {"id": request.inmate_id}
-    ).fetchone()
-    if not inmate:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Inmate {request.inmate_id} not found")
+    _ensure_inmate_or_pending_exists(db, request.inmate_id)
  
     # Validate officer
     officer = db.execute(

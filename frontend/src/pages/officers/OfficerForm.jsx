@@ -33,7 +33,7 @@ export const OfficerForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('userToken') || localStorage.getItem('token');
       if (!token) throw new Error('No token found');
 
       if (!formData.prison_id) {

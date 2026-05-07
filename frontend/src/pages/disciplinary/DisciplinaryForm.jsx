@@ -16,6 +16,7 @@ export const DisciplinaryForm = () => {
     imposed_by: localStorage.getItem('userNationalId') || ''
   });
   const [data, setData] = useState({ inmates: [], incidents: [] });
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,45 +24,81 @@ export const DisciplinaryForm = () => {
     const headers = { 'Authorization': `Bearer ${token}` };
     const prisonId = localStorage.getItem('prison_id');
 
-    const fetchData = async () => {
+    const fetchInitialData = async () => {
       try {
-        const [inmatesRes, incidentsRes, disciplinaryRes] = await Promise.all([
-          fetch('/api/inmates', { headers }),
-          fetch('/api/incidents', { headers }),
-          fetch('/api/disciplinary', { headers }),
-        ]);
-        const allInmates = await inmatesRes.json();
-        const allIncidents = await incidentsRes.json();
-        const allDisciplinary = await disciplinaryRes.json();
+        const inmatesUrl = prisonId ? `/api/inmates/prison/${prisonId}` : '/api/inmates';
+        const inmatesRes = await fetch(inmatesUrl, { headers });
+        const inmates = await inmatesRes.json();
 
-        const inmates = prisonId
-          ? allInmates.filter(i => String(i.assigned_prison) === String(prisonId))
-          : allInmates;
-
-        // Get IDs of incidents already linked to a disciplinary record
-        const linkedIncidentIds = new Set(
-          allDisciplinary.filter(d => d.incident_id).map(d => String(d.incident_id))
-        );
-
-        // Filter out incidents already linked to a disciplinary record
-        const incidents = (prisonId
-          ? allIncidents.filter(i => String(i.prison_id) === String(prisonId))
-          : allIncidents
-        ).filter(i => !linkedIncidentIds.has(String(i.incident_id)));
-
-        setData({ inmates, incidents });
+        setData({ inmates, incidents: [] });
       } catch (err) {
         console.error('Error fetching form data:', err);
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
+    fetchInitialData();
   }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('userToken') || '';
+    const headers = { 'Authorization': `Bearer ${token}` };
+
+    const inmateId = formData.inmate_id;
+
+    const fetchIncidentsForInmate = async () => {
+      if (!inmateId) {
+        setData(prev => ({ ...prev, incidents: [] }));
+        setFormData(prev => ({ ...prev, incident_id: '' }));
+        return;
+      }
+
+      try {
+        const [incidentsRes, disciplinaryRes] = await Promise.all([
+          fetch(`/api/incidents/inmate/${inmateId}`, { headers }),
+          fetch(`/api/disciplinary/inmate/${inmateId}`, { headers })
+        ]);
+
+        const incidents = await incidentsRes.json();
+        const disciplinary = await disciplinaryRes.json();
+
+        const incidentList = Array.isArray(incidents) ? incidents : [];
+        const disciplinaryList = Array.isArray(disciplinary) ? disciplinary : [];
+
+        // Get IDs of incidents that already have a disciplinary record for THIS inmate
+        const linkedIncidentIds = new Set(
+          disciplinaryList
+            .filter(d => d.incident_id !== null && d.incident_id !== undefined)
+            .map(d => String(d.incident_id))
+        );
+
+        // Filter out incidents that are already linked for THIS inmate
+        const filteredIncidents = incidentList.filter(
+          i => !linkedIncidentIds.has(String(i.incident_id))
+        );
+
+        setData(prev => ({ ...prev, incidents: filteredIncidents }));
+
+        setFormData(prev => {
+          const stillValid = filteredIncidents.some(i => String(i.incident_id) === String(prev.incident_id));
+          return stillValid ? prev : { ...prev, incident_id: '' };
+        });
+      } catch (err) {
+        console.error('Error fetching incidents for inmate:', err);
+        setData(prev => ({ ...prev, incidents: [] }));
+      }
+    };
+
+    fetchIncidentsForInmate();
+  }, [formData.inmate_id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'inmate_id' ? { incident_id: '' } : {})
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -86,9 +123,13 @@ export const DisciplinaryForm = () => {
         imposed_by: formData.imposed_by
       };
 
+      const token = localStorage.getItem('userToken') || '';
       const response = await fetch('/api/disciplinary', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(payload)
       });
       const responseBody = await response.json().catch(() => ({}));
@@ -99,7 +140,7 @@ export const DisciplinaryForm = () => {
 
       toast.success('Record Added', 'The disciplinary action has been recorded.');
       navigate('/disciplinary');
-    } catch (err) {
+    } catch {
       toast.error('Submission Failed', 'An error occurred while recording the disciplinary action.');
     }
   };

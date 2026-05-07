@@ -3,7 +3,6 @@ CREATE TABLE incident (
     type                VARCHAR(50)     NOT NULL
                         CHECK (type IN ('Fight','Self-Harm','Escape Attempt',
                                         'Property Damage','Assault on Staff','Other')),
-    inmate_id            INTEGER         NOT NULL REFERENCES inmate(inmate_id) ON DELETE CASCADE,
     block_id            INTEGER         REFERENCES block(block_id) ON DELETE SET NULL,
 
     occurred_at         TIMESTAMP       NOT NULL,

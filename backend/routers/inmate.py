@@ -267,22 +267,62 @@ def release_inmate(inmate_id: int, db: SessionDep):
 @router.get("/prison/{prison_id}", response_model=list[schemas.InmateResponse], status_code=status.HTTP_200_OK)
 def get_inmates_by_prison(prison_id: int, db: SessionDep):
     inmates = db.execute(text("""
-        SELECT 
-            i.*,
-            i.status as status,
-            b.block_id as block_id,
-            p.name as prison_name,
-            date(i.start_date, 
-                 '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
-                 '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
-                 '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
-        FROM inmate i
-        LEFT JOIN cell c ON i.assigned_cell = c.cell_id
-        LEFT JOIN block b ON c.block_id = b.block_id
-        LEFT JOIN prison p ON b.prison_id = p.prison_id
-        LEFT JOIN legal_case lc ON i.inmate_id = lc.inmate_id
-        WHERE b.prison_id = :prison_id
-        GROUP BY i.inmate_id
+        SELECT * FROM (
+            SELECT
+                i.inmate_id,
+                i.national_id,
+                i.full_name,
+                i.date_of_birth,
+                i.gender,
+                i.nationality,
+                i.occupation,
+                i.start_date,
+                i.education_level,
+                i.assigned_cell,
+                b.block_id as block_id,
+                i.assigned_prison,
+                i.status as status,
+                p.name as prison_name,
+                date(i.start_date,
+                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years',
+                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months',
+                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
+            FROM inmate i
+            LEFT JOIN cell c ON i.assigned_cell = c.cell_id
+            LEFT JOIN block b ON c.block_id = b.block_id
+            LEFT JOIN prison p ON b.prison_id = p.prison_id
+            LEFT JOIN legal_case lc ON i.inmate_id = lc.inmate_id
+            WHERE b.prison_id = :prison_id
+            GROUP BY i.inmate_id
+
+            UNION ALL
+
+            SELECT
+                pi.pending_inmate_id as inmate_id,
+                pi.national_id,
+                pi.full_name,
+                pi.date_of_birth,
+                pi.gender,
+                pi.nationality,
+                pi.occupation,
+                pi.start_date,
+                pi.education_level,
+                NULL as assigned_cell,
+                NULL as block_id,
+                pi.assigned_prison,
+                pi.status as status,
+                p.name as prison_name,
+                date(pi.start_date,
+                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years',
+                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months',
+                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
+            FROM pending_inmate pi
+            LEFT JOIN prison p ON pi.assigned_prison = p.prison_id
+            LEFT JOIN legal_case lc ON pi.pending_inmate_id = lc.inmate_id
+            WHERE pi.assigned_prison = :prison_id
+            GROUP BY pi.pending_inmate_id
+        )
+        ORDER BY inmate_id, full_name
     """), {"prison_id": prison_id}).fetchall()
     
     return [dict(row._mapping) for row in inmates]
@@ -305,8 +345,6 @@ def get_inmates_by_incident(incident_id: int, db: SessionDep):
         LEFT JOIN prison p ON b.prison_id = p.prison_id
         LEFT JOIN legal_case lc ON i.inmate_id = lc.inmate_id
         WHERE i.inmate_id IN (
-            SELECT inmate_id FROM incident WHERE incident_id = :incident_id
-            UNION
             SELECT inmate_id FROM incident_involvement WHERE incident_id = :incident_id
         )
         GROUP BY i.inmate_id
