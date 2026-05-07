@@ -5,18 +5,21 @@ import styles from '../PrisonStyles.module.css';
 import { hasRole } from '../../services/authentication';
 
 export const HealthcareOverview = () => {
+  const prisonId = localStorage.getItem('prison_id');
   const [data, setData] = useState({ doctors: [], visits: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const doctorUrl = prisonId ? `/api/doctor/prison/${prisonId}` : '/api/doctor';
+    const visitUrl = prisonId ? `/api/medical-visit/prison/${prisonId}` : '/api/medical-visit';
     Promise.all([
-      fetch('/api/doctor').then(r => r.json()),
-      fetch('/api/medical-visit').then(r => r.json()),
+      fetch(doctorUrl).then(r => r.json()),
+      fetch(visitUrl).then(r => r.json()),
     ]).then(([doctors, visits]) => {
       setData({ doctors, visits });
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, []);
+  }, [prisonId]);
 
   if (loading) return <div className={styles.emptyState}>Loading Healthcare Records...</div>;
 
@@ -73,9 +76,14 @@ export const HealthcareOverview = () => {
                     <td>{v.visit_id}</td>
                     <td>{v.inmate_name}</td>
                     <td>{v.doctor_name}</td>
-                    <td>{v.date_time}</td>
-                    <td>{v.diagnosis || '—'}</td>
-                    <td style={{ fontSize: '0.8rem' }}>{v.description || '—'}</td>
+<td>
+                    {v.visit_datetime
+                      ? new Date(v.visit_datetime).toLocaleString()
+                      : '—'
+                    }
+                  </td>
+                  <td>{v.diagnosis || '—'}</td>
+                  <td style={{ fontSize: '0.8rem' }}>{v.description || '—'}</td>
                   </tr>
                 )) : (
                   <tr><td colSpan="6" className={styles.emptyState}>No medical visits recorded.</td></tr>
@@ -85,11 +93,15 @@ export const HealthcareOverview = () => {
           </div>
         </div>
 
-        {hasRole('admin', 'manager') && (
-          <div style={{ textAlign: 'center', marginTop: '20px', display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+        {hasRole('admin') && (
+          <div style={{ textAlign: 'center', marginTop: '20px' }}>
             <Link to="/healthcare/doctors/add" className={`${styles.btn} ${styles.btnPrimary}`}>
               <Plus size={16} /> Add Doctor
             </Link>
+          </div>
+        )}
+        {hasRole('manager') && (
+          <div style={{ textAlign: 'center', marginTop: '20px' }}>
             <Link to="/healthcare/visits/add" className={`${styles.btn} ${styles.badgeSuccess}`} style={{ textDecoration: 'none' }}>
               <Plus size={16} /> Record Medical Visit
             </Link>

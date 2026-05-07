@@ -7,10 +7,11 @@ import { useToast } from '../../context/ToastContext';
 export const MedicalVisitForm = () => {
   const navigate = useNavigate();
   const toast = useToast();
+  const prisonId = localStorage.getItem('prison_id');
   const [formData, setFormData] = useState({
     inmate_id: '',
     doctor_id: '',
-    date_time: '',
+    visit_datetime: '',
     diagnosis: '',
     description: ''
   });
@@ -18,14 +19,16 @@ export const MedicalVisitForm = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const inmateUrl = prisonId ? `/api/inmates/prison/${prisonId}` : '/api/inmates';
+    const doctorUrl = prisonId ? `/api/doctor/prison/${prisonId}` : '/api/doctor';
     Promise.all([
-      fetch('/api/inmates').then(r => r.json()),
-      fetch('/api/doctor').then(r => r.json()),
+      fetch(inmateUrl).then(r => r.json()),
+      fetch(doctorUrl).then(r => r.json()),
     ]).then(([inmates, doctors]) => {
       setData({ inmates, doctors });
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, []);
+  }, [prisonId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -38,8 +41,9 @@ export const MedicalVisitForm = () => {
       const payload = {
         inmate_id: parseInt(formData.inmate_id, 10),
         doctor_id: formData.doctor_id,
-        visit_datetime: formData.date_time,
-        diagnosis: formData.diagnosis
+        visit_datetime: new Date(formData.visit_datetime).toISOString(),
+        diagnosis: formData.diagnosis,
+        description: formData.description
       };
 
       const response = await fetch('/api/medical-visit', {
@@ -125,8 +129,8 @@ export const MedicalVisitForm = () => {
                 <label className={styles.formLabel}>Date & Time *</label>
                 <input 
                   type="datetime-local" 
-                  name="date_time" 
-                  value={formData.date_time} 
+                  name="visit_datetime" 
+                  value={formData.visit_datetime} 
                   onChange={handleChange} 
                   required 
                   className={styles.formInput}
