@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, Form
 from sqlmodel import text
 import schemas
 from database import SessionDep
@@ -96,4 +96,102 @@ def delete_pending_inmate(pending_inmate_id: int, db: SessionDep):
     db.execute(text("DELETE FROM pending_inmate WHERE pending_inmate_id = :pending_inmate_id"), {"pending_inmate_id": pending_inmate_id})
     db.commit()
     return None
+
+
+@router.post("/{pending_inmate_id}/assign", response_model=schemas.InmateResponse, status_code=status.HTTP_200_OK)
+def assign_pending_inmate_to_cell(
+    pending_inmate_id: int,
+    db: SessionDep,
+    cell_id: int = Form(...),
+):
+    # NOTE: Using form fields because frontend posts x-www-form-urlencoded.
+    pending = db.execute(text("""
+        SELECT *
+        FROM pending_inmate
+        WHERE pending_inmate_id = :pending_inmate_id
+    """), {"pending_inmate_id": pending_inmate_id}).fetchone()
+
+    if not pending:
+        raise HTTPException(status_code=404, detail="Pending inmate not found")
+
+    pending_dict = dict(pending._mapping)
+    prison_id = pending_dict.get("assigned_prison")
+    if prison_id is None:
+        raise HTTPException(status_code=400, detail="Pending inmate has no assigned prison")
+
+    # Validate the cell belongs to the same prison
+    cell_row = db.execute(text("""
+        SELECT c.cell_id, c.capacity, c.block_id, b.prison_id
+        FROM cell c
+        JOIN block b ON c.block_id = b.block_id
+        WHERE c.cell_id = :cell_id
+    """), {"cell_id": cell_id}).fetchone()
+
+    if not cell_row:
+        raise HTTPException(status_code=404, detail="Cell not found")
+
+    cell = dict(cell_row._mapping)
+    if int(cell["prison_id"]) != int(prison_id):
+        raise HTTPException(status_code=400, detail="Selected cell is not in the inmate's assigned prison")
+
+    occupancy = db.execute(text("""
+        SELECT COUNT(*) AS occupancy
+        FROM inmate
+        WHERE assigned_cell = :cell_id
+    """), {"cell_id": cell_id}).fetchone()[0]
+
+    if occupancy >= int(cell["capacity"]):
+        raise HTTPException(status_code=400, detail="Selected cell is full")
+
+    # Move record: insert into inmate (keep same id), then delete pending
+    db.execute(text("""
+        INSERT INTO inmate (
+            inmate_id, national_id, full_name, date_of_birth, gender, nationality,
+            occupation, start_date, education_level, assigned_cell, assigned_prison, status
+        ) VALUES (
+            :inmate_id, :national_id, :full_name, :date_of_birth, :gender, :nationality,
+            :occupation, :start_date, :education_level, :assigned_cell, :assigned_prison, :status
+        )
+    """), {
+        "inmate_id": pending_inmate_id,
+        "national_id": pending_dict["national_id"],
+        "full_name": pending_dict["full_name"],
+        "date_of_birth": pending_dict["date_of_birth"],
+        "gender": pending_dict["gender"],
+        "nationality": pending_dict["nationality"],
+        "occupation": pending_dict.get("occupation"),
+        "start_date": pending_dict["start_date"],
+        "education_level": pending_dict["education_level"],
+        "assigned_cell": cell_id,
+        "assigned_prison": prison_id,
+        "status": pending_dict.get("status") or "Active",
+    })
+
+    db.execute(text("""
+        DELETE FROM pending_inmate
+        WHERE pending_inmate_id = :pending_inmate_id
+    """), {"pending_inmate_id": pending_inmate_id})
+
+    db.commit()
+
+    # Return consistent response with prison_name + release_date
+    inserted = db.execute(text("""
+        SELECT 
+            i.*,
+            b.block_id as block_id,
+            p.name as prison_name,
+            date(i.start_date, 
+                 '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
+                 '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
+                 '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
+        FROM inmate i
+        LEFT JOIN cell c ON i.assigned_cell = c.cell_id
+        LEFT JOIN block b ON c.block_id = b.block_id
+        LEFT JOIN prison p ON b.prison_id = p.prison_id
+        LEFT JOIN legal_case lc ON i.inmate_id = lc.inmate_id
+        WHERE i.inmate_id = :inmate_id
+        GROUP BY i.inmate_id
+    """), {"inmate_id": pending_inmate_id}).fetchone()
+
+    return dict(inserted._mapping) if inserted else None
 

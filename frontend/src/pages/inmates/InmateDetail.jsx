@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { User, Scale, AlertTriangle, ShieldAlert, HeartPulse, LogOut } from 'lucide-react';
+import { Scale, AlertTriangle, ShieldAlert, HeartPulse } from 'lucide-react';
 import styles from '../PrisonStyles.module.css';
 import { hasRole } from '../../services/authentication';
-import { postForm } from '../../services/authentication';
 
 export const InmateDetail = () => {
   const { id } = useParams();
@@ -27,12 +26,6 @@ export const InmateDetail = () => {
   if (!data || !data.inmate) return <div className={styles.emptyState}>Inmate not found.</div>;
 
   const { inmate, legal_case, incidents = [], disciplinary = [], medical = [] } = data;
-
-  const releaseInmate = async () => {
-    if (!window.confirm('Release this inmate?')) return;
-    await postForm(`/inmates/${id}/release`, {});
-    window.location.href = '/inmates';
-  };
 
   return (
     <div className={styles.prisonContainer}>
@@ -72,7 +65,7 @@ export const InmateDetail = () => {
               </span>
             </div>
             <div><span style={{ color: '#7a6a58', fontSize: '0.7rem', textTransform: 'uppercase' }}>Prison:</span><br />{inmate.prison_name || 'Unassigned'}</div>
-            <div><span style={{ color: '#7a6a58', fontSize: '0.7rem', textTransform: 'uppercase' }}>Block:</span><br />{inmate.block_name || 'Unassigned'}</div>
+            <div><span style={{ color: '#7a6a58', fontSize: '0.7rem', textTransform: 'uppercase' }}>Block:</span><br />{inmate.block_id ? `Block #${inmate.block_id}` : 'Unassigned'}</div>
             <div><span style={{ color: '#7a6a58', fontSize: '0.7rem', textTransform: 'uppercase' }}>Cell:</span><br />{inmate.assigned_cell ? `Cell #${inmate.assigned_cell}` : 'Unassigned'}</div>
           </div>
         </div>

@@ -9,20 +9,56 @@ export const InmateAssignForm = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({ block_id: '', cell_id: '' });
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
-    fetch(`/api/inmates/${id}`)
-      .then(r => r.json())
-      .then(async inmate => {
-        const allBlocks = await fetch(`/api/prison`).then(r => r.json())
-          .then(prisons => Promise.all(
-            prisons.map(p => fetch(`/api/prison/${p.prison_id}/blocks-cells`).then(r => r.json()))
-          ));
-        const blocks = allBlocks.flat();
-        setData({ inmate, blocks });
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    let cancelled = false;
+
+    (async () => {
+      try {
+        // This screen is used to place a pending inmate into a real cell.
+        // Try pending inmate first; fall back to inmate if needed.
+        let person = await fetch(`/api/pending_inmates/${id}`).then(async (r) => {
+          if (!r.ok) throw new Error('not_pending');
+          return r.json();
+        });
+
+        if (!person || person.error) {
+          person = await fetch(`/api/inmates/${id}`).then(r => r.json());
+        }
+
+        const prisonId = person?.assigned_prison;
+
+        if (!prisonId) {
+          if (!cancelled) {
+            setData({ inmate: person, blocks: [], blockCells: {}, isPending: Boolean(person?.pending_inmate_id) });
+            setLoading(false);
+          }
+          return;
+        }
+
+        const blocks = await fetch(`/api/prison/${prisonId}/blocks-cells`).then(r => r.json());
+        const blockCells = Object.fromEntries(
+          (Array.isArray(blocks) ? blocks : []).map(b => [String(b.block_id), b.cells ?? []])
+        );
+
+        if (!cancelled) {
+          setData({
+            inmate: person,
+            blocks: Array.isArray(blocks) ? blocks : [],
+            blockCells,
+            isPending: Boolean(person?.pending_inmate_id),
+          });
+          setLoading(false);
+        }
+      } catch {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   const handleChange = (e) => {
@@ -36,15 +72,35 @@ export const InmateAssignForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await postForm(`/inmates/${id}/assign`, formData);
-    navigate(`/inmates/${id}`);
+    setSubmitError('');
+
+    try {
+      const body = new URLSearchParams();
+      body.append('cell_id', formData.cell_id ?? '');
+
+      const response = await fetch(`/api/pending_inmates/${id}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        setSubmitError(err?.detail || 'Failed to assign inmate to this cell.');
+        return;
+      }
+
+      navigate(`/inmates/${id}`);
+    } catch {
+      setSubmitError('Failed to assign inmate to this cell.');
+    }
   };
 
   if (loading) return <div className={styles.emptyState}>Loading...</div>;
   if (!data || data.error) return <div className={styles.emptyState}>Inmate not found.</div>;
 
-  const { inmate, blocks, block_cells } = data;
-  const availableCells = formData.block_id ? block_cells[formData.block_id] || [] : [];
+  const { inmate, blocks, blockCells } = data;
+  const availableCells = formData.block_id ? (blockCells[String(formData.block_id)] || []) : [];
 
   return (
     <div className={styles.prisonContainer}>
@@ -86,7 +142,7 @@ export const InmateAssignForm = () => {
                   <option value="">— Select Block —</option>
                   {blocks.map(b => (
                     <option key={b.block_id} value={b.block_id}>
-                      {b.name} ({b.security_level}) — {b.current_occupancy}/{b.capacity}
+                      Block #{b.block_id} ({b.security_level}) — {b.total_inmates} inmates / {b.total_cells} cells
                     </option>
                   ))}
                 </select>
@@ -105,7 +161,7 @@ export const InmateAssignForm = () => {
                   <option value="">{formData.block_id ? '— Select Cell —' : '— Select Block First —'}</option>
                   {availableCells.map(c => (
                     <option key={c.cell_id} value={c.cell_id}>
-                      Cell #{c.cell_id} ({c.current_occupancy}/{c.capacity})
+                      Cell #{c.cell_id} ({c.occupancy}/{c.capacity}) — {c.status}
                     </option>
                   ))}
                 </select>
@@ -116,6 +172,11 @@ export const InmateAssignForm = () => {
               <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>Assign Cell</button>
               <Link to={`/inmates/${id}`} className={`${styles.btn} ${styles.btnOutline}`}>Cancel</Link>
             </div>
+            {submitError && (
+              <div style={{ marginTop: '10px', color: '#b42318', fontSize: '0.85rem' }}>
+                {submitError}
+              </div>
+            )}
           </form>
         </div>
       </div>
