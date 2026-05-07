@@ -98,7 +98,7 @@ export const IncidentDetail = () => {
                 <thead><tr><th>ID</th><th>Name</th><th>Action</th></tr></thead>
                 <tbody>
                   {involved_inmates.map((i) => (
-                    <tr key={i.inmate_id}>
+                    <tr key={`${i.source || 'inmate'}-${i.inmate_id}`}>
                       <td>{i.inmate_id}</td>
                       <td>{i.full_name}</td>
                       <td>

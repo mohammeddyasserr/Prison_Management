@@ -161,12 +161,18 @@ def get_visit(visit_id: int, db: SessionDep):
 
 @router.post("", response_model=schemas.VisitResponse, status_code=status.HTTP_201_CREATED)
 async def create_visit(request: schemas.VisitCreate, db: SessionDep):
-    # Validate inmate exists
-    inmate = db.execute(text("SELECT inmate_id FROM inmate WHERE inmate_id = :id"),
-                        {"id": request.inmate_id}).fetchone()
+    # Validate inmate exists and is not released
+    inmate = db.execute(text("""
+        SELECT status FROM inmate WHERE inmate_id = :id
+        UNION ALL
+        SELECT status FROM pending_inmate WHERE pending_inmate_id = :id
+    """), {"id": request.inmate_id}).fetchone()
     if not inmate:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Inmate with id {request.inmate_id} not found")
+    if inmate[0] == 'Released':
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Inmate {request.inmate_id} has been released and cannot receive visits")
 
     # Validate visitor exists
     visitor = db.execute(text("SELECT national_id FROM visitor WHERE national_id = :id"),

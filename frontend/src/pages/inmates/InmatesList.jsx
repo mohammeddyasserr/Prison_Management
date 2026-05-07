@@ -93,7 +93,7 @@ export const InmatesList = () => {
               </thead>
               <tbody>
                 {inmates.length > 0 ? inmates.map((inmate) => (
-                  <tr key={inmate.inmate_id}>
+                  <tr key={`${inmate.source || 'inmate'}-${inmate.inmate_id}`}>
                     <td>{inmate.inmate_id}</td>
                     <td><strong>{inmate.full_name}</strong></td>
                     <td>{inmate.national_id || '—'}</td>

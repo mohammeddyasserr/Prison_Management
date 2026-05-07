@@ -76,6 +76,17 @@ def get_transfer(transfer_id: int, db: SessionDep):
 
 @router.post("", response_model=schemas.TransferResponse, status_code=status.HTTP_201_CREATED)
 def create_transfer(request: schemas.TransferCreate, db: SessionDep):
+    status_row = db.execute(text("""
+        SELECT status FROM inmate WHERE inmate_id = :id
+        UNION ALL
+        SELECT status FROM pending_inmate WHERE pending_inmate_id = :id
+    """), {"id": request.inmate_id}).fetchone()
+
+    if not status_row:
+        raise HTTPException(status_code=404, detail="Inmate not found")
+    if status_row[0] == 'Released':
+        raise HTTPException(status_code=400, detail="Cannot create transfer for a released inmate")
+
     result = db.execute(text("""
         INSERT INTO transfer (
             inmate_id, requesting_prison, destination_prison,
@@ -166,8 +177,10 @@ def accept_transfer(transfer_id: int, request: schemas.TransferUpdate, db: Sessi
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Transfer with id {transfer_id} not found"
         )
-    
-    # Update transfer status to Approved and store approver details
+
+    inmate_id = existing.inmate_id
+    destination_prison = existing.destination_prison
+
     db.execute(text("""
         UPDATE transfer
         SET status = 'Approved',
@@ -180,16 +193,12 @@ def accept_transfer(transfer_id: int, request: schemas.TransferUpdate, db: Sessi
         "approval_date": request.approval_date
     })
 
-    inmate_id = existing.inmate_id
-    destination_prison = existing.destination_prison
-
-    # Fetch inmate data
     inmate_data = db.execute(text("""
         SELECT * FROM inmate WHERE inmate_id = :inmate_id
     """), {"inmate_id": inmate_id}).fetchone()
 
     if inmate_data:
-        # Move to pending_inmate table keeping original ID
+        inmate_dict = dict(inmate_data._mapping)
         db.execute(text("""
             INSERT INTO pending_inmate (
                 pending_inmate_id, national_id, full_name, date_of_birth, gender,
@@ -201,25 +210,27 @@ def accept_transfer(transfer_id: int, request: schemas.TransferUpdate, db: Sessi
                 :assigned_prison, :status
             )
         """), {
-            "pending_inmate_id": inmate_data.inmate_id,
-            "national_id": inmate_data.national_id,
-            "full_name": inmate_data.full_name,
-            "date_of_birth": inmate_data.date_of_birth,
-            "gender": inmate_data.gender,
-            "nationality": inmate_data.nationality,
-            "occupation": inmate_data.occupation,
-            "start_date": inmate_data.start_date,
-            "education_level": inmate_data.education_level,
+            "pending_inmate_id": inmate_dict["inmate_id"],
+            "national_id": inmate_dict["national_id"],
+            "full_name": inmate_dict["full_name"],
+            "date_of_birth": inmate_dict["date_of_birth"],
+            "gender": inmate_dict["gender"],
+            "nationality": inmate_dict["nationality"],
+            "occupation": inmate_dict.get("occupation"),
+            "start_date": inmate_dict["start_date"],
+            "education_level": inmate_dict["education_level"],
             "assigned_prison": destination_prison,
-            "status": inmate_data.status
+            "status": inmate_dict.get("status", "Active"),
         })
-
-        # Delete from inmate table
         db.execute(text("""
             DELETE FROM inmate WHERE inmate_id = :inmate_id
         """), {"inmate_id": inmate_id})
     else:
-        _move_transfer_subject(db, inmate_id, destination_prison)
+        db.execute(text("""
+            UPDATE pending_inmate
+            SET assigned_prison = :destination_prison
+            WHERE pending_inmate_id = :inmate_id
+        """), {"destination_prison": destination_prison, "inmate_id": inmate_id})
 
     db.commit()
 

@@ -437,7 +437,7 @@ export const SuperAdminDashboard = () => {
             {data.highRisk.length > 0 ? (
               <div className={styles.riskList}>
                 {data.highRisk.slice(0, 6).map((inmate) => (
-                  <div key={inmate.inmate_id} className={styles.riskItem}>
+                  <div key={`${inmate.source || 'inmate'}-${inmate.inmate_id}`} className={styles.riskItem}>
                     <span>{inmate.full_name}</span>
                     <strong>{inmate.incident_count} incidents</strong>
                   </div>

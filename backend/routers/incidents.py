@@ -41,7 +41,18 @@ BASE_SELECT = """
     LEFT JOIN officer o  ON o.national_id = i.reporting_officer
 """
 
-def _ensure_inmate_or_pending_exists(db: SessionDep, inmate_id: int) -> None:
+def _check_inmate_not_released(db: SessionDep, inmate_id: int) -> None:
+    _ensure_inmate_or_pending_exists(db, inmate_id)
+    status_row = db.execute(text("""
+        SELECT status FROM inmate WHERE inmate_id = :id
+        UNION ALL
+        SELECT status FROM pending_inmate WHERE pending_inmate_id = :id
+    """), {"id": inmate_id}).fetchone()
+    if status_row and status_row[0] == 'Released':
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Inmate {inmate_id} has been released and cannot be involved in new incidents",
+        )
     exists = db.execute(
         text("""
             SELECT 1
@@ -199,7 +210,7 @@ def create_incident(request: schemas.IncidentCreate, db: SessionDep):
     new_id = result.fetchone().incident_id
 
     for iid in set(request.involved_inmate_ids):
-        _ensure_inmate_or_pending_exists(db, iid)
+        _check_inmate_not_released(db, iid)
         db.execute(text("""
             INSERT OR IGNORE INTO incident_involvement (incident_id, inmate_id)
             VALUES (:incident_id, :inmate_id)

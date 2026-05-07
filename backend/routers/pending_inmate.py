@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, Depends, status, HTTPException, Form
 from sqlmodel import text
 import schemas
@@ -8,35 +9,66 @@ router = APIRouter(
     tags=["pending_inmates"]
 )
 
+
+def _parse_row(row: dict) -> dict:
+    if row.get("legal_cases"):
+        parsed = json.loads(row["legal_cases"])
+        row["legal_cases"] = [c for c in parsed if c.get("case_number") is not None]
+    else:
+        row["legal_cases"] = []
+    return row
+
+
 @router.get("", response_model=list[schemas.PendingInmateResponse], status_code=status.HTTP_200_OK)
 def get_all(db: SessionDep):
     pending_inmates = db.execute(text("""
-        SELECT 
+        SELECT
             pi.*,
             p.name as prison_name,
-            date(pi.start_date, 
-                 '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
-                 '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
-                 '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
+            date(pi.start_date,
+                 '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years',
+                 '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months',
+                 '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date,
+            json_group_array(
+                json_object(
+                    'case_number', lc.case_number,
+                    'crime_type', lc.crime_type,
+                    'court_name', lc.court_name,
+                    'sentence_duration_years', lc.sentence_duration_years,
+                    'sentence_duration_months', lc.sentence_duration_months,
+                    'sentence_duration_days', lc.sentence_duration_days
+                )
+            ) as legal_cases
         FROM pending_inmate pi
         LEFT JOIN prison p ON pi.assigned_prison = p.prison_id
         LEFT JOIN legal_case lc ON pi.pending_inmate_id = lc.inmate_id
         GROUP BY pi.pending_inmate_id
-        ORDER BY pi.pending_inmate_id, pi.full_name
+        ORDER BY pi.status = 'Released', pi.pending_inmate_id, pi.full_name
     """)).fetchall()
-    
-    return [dict(row._mapping) for row in pending_inmates]
+
+    return [_parse_row(dict(row._mapping)) for row in pending_inmates]
+
 
 @router.get("/{pending_inmate_id}", response_model=schemas.PendingInmateResponse, status_code=status.HTTP_200_OK)
 def get_pending_inmate(pending_inmate_id: int, db: SessionDep):
     result = db.execute(text("""
-        SELECT 
+        SELECT
             pi.*,
             p.name as prison_name,
-            date(pi.start_date, 
-                 '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
-                 '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
-                 '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
+            date(pi.start_date,
+                 '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years',
+                 '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months',
+                 '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date,
+            json_group_array(
+                json_object(
+                    'case_number', lc.case_number,
+                    'crime_type', lc.crime_type,
+                    'court_name', lc.court_name,
+                    'sentence_duration_years', lc.sentence_duration_years,
+                    'sentence_duration_months', lc.sentence_duration_months,
+                    'sentence_duration_days', lc.sentence_duration_days
+                )
+            ) as legal_cases
         FROM pending_inmate pi
         LEFT JOIN prison p ON pi.assigned_prison = p.prison_id
         LEFT JOIN legal_case lc ON pi.pending_inmate_id = lc.inmate_id
@@ -47,52 +79,48 @@ def get_pending_inmate(pending_inmate_id: int, db: SessionDep):
     if not result:
         raise HTTPException(status_code=404, detail="Pending inmate not found")
 
-    return dict(result._mapping)
+    return _parse_row(dict(result._mapping))
+
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=schemas.PendingInmateResponse)
 def create_pending_inmate(request: schemas.PendingInmateCreate, db: SessionDep):
     pending_inmate_data = request.model_dump()
-    
+
     result = db.execute(text("""
         INSERT INTO pending_inmate (
-            national_id, full_name, date_of_birth, gender, nationality, 
+            national_id, full_name, date_of_birth, gender, nationality,
             occupation, start_date, education_level, assigned_prison, status
         ) VALUES (
-            :national_id, :full_name, :date_of_birth, :gender, :nationality, 
+            :national_id, :full_name, :date_of_birth, :gender, :nationality,
             :occupation, :start_date, :education_level, :assigned_prison, :status
         ) RETURNING *
     """), pending_inmate_data)
-    
+
     inserted_pending_inmate = result.fetchone()
     pending_inmate_id = inserted_pending_inmate.pending_inmate_id
-    
-    # Fetch the full data with joins to return consistent response
+
     new_result = db.execute(text("""
-        SELECT 
+        SELECT
             pi.*,
             p.name as prison_name,
-            date(pi.start_date, 
-                 '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
-                 '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
-                 '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
+            '[]' as legal_cases
         FROM pending_inmate pi
         LEFT JOIN prison p ON pi.assigned_prison = p.prison_id
-        LEFT JOIN legal_case lc ON pi.pending_inmate_id = lc.inmate_id
         WHERE pi.pending_inmate_id = :pending_inmate_id
-        GROUP BY pi.pending_inmate_id
     """), {"pending_inmate_id": pending_inmate_id}).fetchone()
-    
-    new_pending_inmate = dict(new_result._mapping)
+
+    new_pending_inmate = _parse_row(dict(new_result._mapping))
     db.commit()
     return new_pending_inmate
+
 
 @router.delete("/{pending_inmate_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_pending_inmate(pending_inmate_id: int, db: SessionDep):
     result = db.execute(text("SELECT 1 FROM pending_inmate WHERE pending_inmate_id = :pending_inmate_id"), {"pending_inmate_id": pending_inmate_id}).fetchone()
-    
+
     if not result:
         raise HTTPException(status_code=404, detail="Pending inmate not found")
-        
+
     db.execute(text("DELETE FROM pending_inmate WHERE pending_inmate_id = :pending_inmate_id"), {"pending_inmate_id": pending_inmate_id})
     db.commit()
     return None
@@ -104,7 +132,6 @@ def assign_pending_inmate_to_cell(
     db: SessionDep,
     cell_id: int = Form(...),
 ):
-    # NOTE: Using form fields because frontend posts x-www-form-urlencoded.
     pending = db.execute(text("""
         SELECT *
         FROM pending_inmate
@@ -119,7 +146,6 @@ def assign_pending_inmate_to_cell(
     if prison_id is None:
         raise HTTPException(status_code=400, detail="Pending inmate has no assigned prison")
 
-    # Validate the cell belongs to the same prison
     cell_row = db.execute(text("""
         SELECT c.cell_id, c.capacity, c.block_id, b.prison_id
         FROM cell c
@@ -143,7 +169,6 @@ def assign_pending_inmate_to_cell(
     if occupancy >= int(cell["capacity"]):
         raise HTTPException(status_code=400, detail="Selected cell is full")
 
-    # Move record: insert into inmate (keep same id), then delete pending
     db.execute(text("""
         INSERT INTO inmate (
             inmate_id, national_id, full_name, date_of_birth, gender, nationality,
@@ -174,16 +199,25 @@ def assign_pending_inmate_to_cell(
 
     db.commit()
 
-    # Return consistent response with prison_name + release_date
     inserted = db.execute(text("""
-        SELECT 
+        SELECT
             i.*,
             b.block_id as block_id,
             p.name as prison_name,
-            date(i.start_date, 
-                 '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
-                 '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
-                 '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
+            date(i.start_date,
+                 '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years',
+                 '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months',
+                 '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date,
+            json_group_array(
+                json_object(
+                    'case_number', lc.case_number,
+                    'crime_type', lc.crime_type,
+                    'court_name', lc.court_name,
+                    'sentence_duration_years', lc.sentence_duration_years,
+                    'sentence_duration_months', lc.sentence_duration_months,
+                    'sentence_duration_days', lc.sentence_duration_days
+                )
+            ) as legal_cases
         FROM inmate i
         LEFT JOIN cell c ON i.assigned_cell = c.cell_id
         LEFT JOIN block b ON c.block_id = b.block_id
@@ -193,5 +227,4 @@ def assign_pending_inmate_to_cell(
         GROUP BY i.inmate_id
     """), {"inmate_id": pending_inmate_id}).fetchone()
 
-    return dict(inserted._mapping) if inserted else None
-
+    return _parse_row(dict(inserted._mapping)) if inserted else None

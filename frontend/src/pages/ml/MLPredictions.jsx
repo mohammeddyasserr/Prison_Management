@@ -14,9 +14,9 @@ export const MLPredictions = () => {
       fetch('/api/disciplinary').then(r => r.json()),
       fetch('/api/transfer').then(r => r.json()),
     ]).then(([allInmates, prisons, disciplinary, transfers]) => {
-      const inmates = allInmates.filter(i => i.status === 'active');
+      const activeInmates = allInmates.filter(i => i.status !== 'Released');
 
-      const risk_scores = inmates.map(inmate => {
+      const risk_scores = activeInmates.map(inmate => {
         const incidentCount = disciplinary.filter(dl => dl.inmate_id === inmate.inmate_id).length;
         const score = Math.min(100, incidentCount * 20);
         const level = score >= 80 ? 'Critical' : score >= 60 ? 'High' : score >= 40 ? 'Medium' : 'Low';
@@ -26,9 +26,9 @@ export const MLPredictions = () => {
       const overcrowding = prisons.map(prison => {
         const current_rate = Math.round((prison.current_occupancy / prison.total_capacity) * 100);
         const pendingIn = transfers.filter(t => t.destination_prison === prison.prison_id && t.status === 'Pending').length;
-        const releases_30 = inmates.filter(i => {
-          if (!i.expected_release_date || i.assigned_prison !== prison.prison_id) return false;
-          const diff = (new Date(i.expected_release_date) - new Date()) / (1000 * 60 * 60 * 24);
+        const releases_30 = activeInmates.filter(i => {
+          if (!i.release_date || i.assigned_prison !== prison.prison_id) return false;
+          const diff = (new Date(i.release_date) - new Date()) / (1000 * 60 * 60 * 24);
           return diff <= 30 && diff >= 0;
         }).length;
         const forecast_30 = Math.min(100, Math.round(current_rate + (pendingIn * 2) - (releases_30 * 2)));
@@ -37,7 +37,7 @@ export const MLPredictions = () => {
         return { name: prison.name, current_rate, forecast_30, forecast_60, forecast_90, releases_30, pending_transfers_in: pendingIn };
       });
 
-      const recidivism_scores = inmates.map(inmate => {
+      const recidivism_scores = activeInmates.map(inmate => {
         const discCount = disciplinary.filter(dl => dl.inmate_id === inmate.inmate_id).length;
         const age = inmate.date_of_birth ? new Date().getFullYear() - new Date(inmate.date_of_birth).getFullYear() : 30;
         const ageFactor = age < 25 ? 20 : age < 35 ? 10 : 0;

@@ -15,9 +15,8 @@ export const InmateDetail = () => {
       fetch(`/api/incidents/inmate/${id}`).then(r => r.json()).catch(() => []),
       fetch(`/api/disciplinary/inmate/${id}`).then(r => r.json()).catch(() => []),
       fetch(`/api/medical_visit/inmate/${id}`).then(r => r.json()).catch(() => []),
-      fetch(`/api/legal_case/inmate/${id}`).then(r => r.json()).catch(() => []),
-    ]).then(([inmate, incidents, disciplinary, medical, legal_case]) => {
-      setData({ inmate, incidents, disciplinary, medical, legal_case: Array.isArray(legal_case) ? legal_case[0] || null : legal_case });
+    ]).then(([inmate, incidents, disciplinary, medical]) => {
+      setData({ inmate, incidents, disciplinary, medical });
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [id]);
@@ -25,7 +24,8 @@ export const InmateDetail = () => {
   if (loading) return <div className={styles.emptyState}>Loading Inmate Profile...</div>;
   if (!data || !data.inmate) return <div className={styles.emptyState}>Inmate not found.</div>;
 
-  const { inmate, legal_case, incidents = [], disciplinary = [], medical = [] } = data;
+  const { inmate, incidents = [], disciplinary = [], medical = [] } = data;
+  const legalCases = inmate.legal_cases || [];
 
   return (
     <div className={styles.prisonContainer}>
@@ -71,15 +71,19 @@ export const InmateDetail = () => {
         </div>
 
         {/* Legal Case */}
-        {legal_case && (
+        {legalCases.length > 0 && (
           <div className={styles.detailPanel}>
             <h3><Scale size={16} style={{ marginRight: '6px' }} /> Legal Case Information</h3>
-            <div className={styles.detailGrid}>
-              <div><span>Case Number</span><strong>{legal_case.case_number}</strong></div>
-              <div><span>Crime Type</span><strong>{legal_case.case_type}</strong></div>
-              <div><span>Court Name</span><strong>{legal_case.court_name}</strong></div>
-              <div><span>Sentence Duration</span><strong>{legal_case.sentence_duration}</strong></div>
-            </div>
+            {legalCases.map((lc, i) => (
+              <div key={i} style={{ marginBottom: i < legalCases.length - 1 ? '16px' : 0, paddingBottom: i < legalCases.length - 1 ? '16px' : 0, borderBottom: i < legalCases.length - 1 ? '1px solid #e0d5c8' : 'none' }}>
+                <div className={styles.detailGrid}>
+                  <div><span>Case Number</span><strong>{lc.case_number}</strong></div>
+                  <div><span>Crime Type</span><strong>{lc.crime_type}</strong></div>
+                  <div><span>Court Name</span><strong>{lc.court_name}</strong></div>
+                  <div><span>Sentence Duration</span><strong>{[lc.sentence_duration_years ? `${lc.sentence_duration_years}y` : null, lc.sentence_duration_months ? `${lc.sentence_duration_months}m` : null, lc.sentence_duration_days ? `${lc.sentence_duration_days}d` : null].filter(Boolean).join(' ') || '—'}</strong></div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -93,7 +97,7 @@ export const InmateDetail = () => {
                 <tbody>
                   {incidents.map((inc, i) => (
                     <tr key={i}>
-                      <td>{inc.date_time}</td>
+                      <td>{inc.occurred_at ? new Date(inc.occurred_at).toLocaleString() : '—'}</td>
                       <td><span className={`${styles.badge} ${styles.badgeDanger}`}>{inc.type}</span></td>
                       <td>{inc.action_taken || '—'}</td>
                     </tr>
@@ -116,7 +120,7 @@ export const InmateDetail = () => {
                     <tr key={i}>
                       <td>{d.date_imposed || '—'}</td>
                       <td>{d.punishment_type || '—'}</td>
-                      <td>{d.solitary_confinement_duration ? `${d.solitary_confinement_duration} days` : '—'}</td>
+                      <td>{d.solitary_days ? `${d.solitary_days} days` : '—'}</td>
                       <td className={styles.notesCell}>{d.notes || '—'}</td>
                     </tr>
                   ))}

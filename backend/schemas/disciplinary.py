@@ -2,6 +2,7 @@ from sqlmodel import SQLModel
 from typing import Optional
 from datetime import date
 from enum import Enum
+from pydantic import BaseModel
 
 
 class PunishmentType(str, Enum):
@@ -22,16 +23,17 @@ class DisciplinaryCreate(SQLModel):
 
 
 class DisciplinaryUpdate(SQLModel):
-    inmate_id:       int                 
-    imposed_by:      str                 
-    incident_id:     int | None = None   
+    inmate_id:       int
+    imposed_by:      str
+    incident_id:     int | None = None
     punishment_type: PunishmentType | None = None
     solitary_days:   int | None = None
     date_imposed:    date | None = None
     notes:           str | None = None
 
 
-class DisciplinaryResponse(SQLModel):
+class DisciplinaryResponse(BaseModel):
+    model_config = {"from_attributes": True}
     inmate_id:       int
     inmate_name:     str | None = None
     incident_id:     int | None = None
@@ -39,7 +41,7 @@ class DisciplinaryResponse(SQLModel):
     officer_name:    str | None = None
     punishment_type: str
     solitary_days:   int | None = None
-    date_imposed:    date
+    date_imposed:    str
     end_date:        str | None = None
     notes:           str | None = None
     prison_id:       int | None = None

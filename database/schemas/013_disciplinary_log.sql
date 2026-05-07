@@ -8,7 +8,8 @@ CREATE TABLE disciplinary_log (
                                 'Solitary Confinement',
                                 'Transfer to High-Security',
                                 'Other')),
-    solitary_days       INTEGER         CHECK (solitary_days BETWEEN 1 AND 30), -- system-enforced 30-day cap
+    solitary_days       INTEGER         CHECK (solitary_days BETWEEN 1 AND 30),
+    duration_days       INTEGER         CHECK (duration_days BETWEEN 1 AND 365),
     date_imposed        DATE            NOT NULL,
     notes               TEXT,
     PRIMARY KEY (inmate_id,imposed_by, incident_id)

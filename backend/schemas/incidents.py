@@ -2,7 +2,7 @@ from sqlmodel import SQLModel
 from typing import List, Optional
 from datetime import datetime
 from enum import Enum
-from pydantic import field_validator
+from pydantic import field_validator, BaseModel
 
 
 class IncidentType(str, Enum):
@@ -23,16 +23,6 @@ class IncidentCreate(SQLModel):
     action_taken: str
     involved_inmate_ids: list[int] = []
 
-# class IncidentCreate(SQLModel):
-#     type: IncidentType
-#     inmate_id: int
-#     block_id: Optional[int] = None
-#     occurred_at: datetime
-#     reporting_officer: str
-#     description: Optional[str] = None
-#     action_taken: str
-#     involved_inmate_ids: Optional[List[int]] = None
-
 
 class IncidentUpdate(SQLModel):
     type: str | None = None
@@ -43,22 +33,12 @@ class IncidentUpdate(SQLModel):
     action_taken: str | None = None
     involved_inmate_ids: list[int] | None = None
 
-# class IncidentUpdate(SQLModel):
-#     type: Optional[IncidentType] = None
-#     inmate_id: Optional[int] = None
-#     block_id: Optional[int] = None
-#     occurred_at: Optional[datetime] = None
-#     reporting_officer: Optional[str] = None
-#     description: Optional[str] = None
-#     action_taken: Optional[str] = None
-#     involved_inmate_ids: Optional[List[int]] = None
 
-
-
-class IncidentResponse(SQLModel):
+class IncidentResponse(BaseModel):
+    model_config = {"from_attributes": True}
     incident_id:          int
     type:                 str
-    occurred_at:          datetime
+    occurred_at:          str
     description:          str | None = None
     action_taken:         str
     block_id:             int | None = None
@@ -68,20 +48,4 @@ class IncidentResponse(SQLModel):
     reporting_officer:    str
     officer_name:         str | None = None
     involved_inmate_ids:  str | None = None
-    involved_inmate_names: str | None = None
-
-# class IncidentResponse(SQLModel):
-#     incident_id:          int
-#     type:                 str
-#     occurred_at:          datetime
-#     description:          str | None = None
-#     action_taken:         str
-#     inmate_id:            int
-#     inmate_name:          str | None = None
-#     block_id:             int | None = None
-#     block_security_level: str | None = None
-#     prison_id:            int | None = None
-#     prison_name:          str | None = None
-#     reporting_officer:    str
-#     officer_name:         str | None = None
-#     involved_inmate_ids:  str | None = None  
+    involved_inmate_names: str | None = None  
