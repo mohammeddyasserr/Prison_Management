@@ -194,11 +194,11 @@ def accept_transfer(transfer_id: int, request: schemas.TransferUpdate, db: Sessi
             INSERT INTO pending_inmate (
                 pending_inmate_id, national_id, full_name, date_of_birth, gender,
                 nationality, occupation, start_date, education_level,
-                assigned_prison
+                assigned_prison, status
             ) VALUES (
                 :pending_inmate_id, :national_id, :full_name, :date_of_birth, :gender,
                 :nationality, :occupation, :start_date, :education_level,
-                :assigned_prison
+                :assigned_prison, :status
             )
         """), {
             "pending_inmate_id": inmate_data.inmate_id,
@@ -210,7 +210,8 @@ def accept_transfer(transfer_id: int, request: schemas.TransferUpdate, db: Sessi
             "occupation": inmate_data.occupation,
             "start_date": inmate_data.start_date,
             "education_level": inmate_data.education_level,
-            "assigned_prison": destination_prison
+            "assigned_prison": destination_prison,
+            "status": inmate_data.status
         })
 
         # Delete from inmate table

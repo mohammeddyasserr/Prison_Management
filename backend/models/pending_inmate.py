@@ -11,6 +11,7 @@ class PendingInmateBase(SQLModel):
     start_date: date
     education_level: str
     assigned_prison: int | None = Field(default=None, foreign_key="prison.prison_id")
+    status: str = "Active"
 
 class PendingInmate(PendingInmateBase, table=True):
     __tablename__ = "pending_inmate"

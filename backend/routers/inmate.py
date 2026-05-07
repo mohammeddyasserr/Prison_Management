@@ -24,14 +24,7 @@ def get_all(db: SessionDep):
                 i.education_level,
                 i.assigned_cell,
                 i.assigned_prison,
-                CASE 
-                    WHEN i.status = 'Active' AND date('now') > date(i.start_date, 
-                         '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
-                         '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
-                         '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') 
-                    THEN 'To be released'
-                    ELSE i.status 
-                END as status,
+                i.status as status,
                 p.name as prison_name,
                 date(i.start_date, 
                      '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
@@ -58,13 +51,18 @@ def get_all(db: SessionDep):
                 pi.education_level,
                 NULL as assigned_cell,
                 pi.assigned_prison,
-                'Pending' as status,
+                pi.status as status,
                 p.name as prison_name,
-                NULL as release_date
+                date(pi.start_date, 
+                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
             FROM pending_inmate pi
             LEFT JOIN prison p ON pi.assigned_prison = p.prison_id
+            LEFT JOIN legal_case lc ON pi.pending_inmate_id = lc.inmate_id
+            GROUP BY pi.pending_inmate_id
         )
-        ORDER BY status, full_name
+        ORDER BY inmate_id, full_name
     """)).fetchall()
     
     return [dict(row._mapping) for row in inmates]
@@ -85,14 +83,7 @@ def get_inmate(inmate_id: int, db: SessionDep):
                 i.education_level,
                 i.assigned_cell,
                 i.assigned_prison,
-                CASE 
-                    WHEN i.status = 'Active' AND date('now') > date(i.start_date, 
-                         '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
-                         '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
-                         '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') 
-                    THEN 'To be released'
-                    ELSE i.status 
-                END as status,
+                i.status as status,
                 p.name as prison_name,
                 date(i.start_date, 
                      '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
@@ -119,11 +110,16 @@ def get_inmate(inmate_id: int, db: SessionDep):
                 pi.education_level,
                 NULL as assigned_cell,
                 pi.assigned_prison,
-                'Pending' as status,
+                pi.status as status,
                 p.name as prison_name,
-                NULL as release_date
+                date(pi.start_date, 
+                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
             FROM pending_inmate pi
             LEFT JOIN prison p ON pi.assigned_prison = p.prison_id
+            LEFT JOIN legal_case lc ON pi.pending_inmate_id = lc.inmate_id
+            GROUP BY pi.pending_inmate_id
         )
         WHERE inmate_id = :inmate_id
     """), {"inmate_id": inmate_id}).fetchone()
@@ -149,14 +145,7 @@ def get_inmate_by_national_id(national_id: str, db: SessionDep):
                 i.education_level,
                 i.assigned_cell,
                 i.assigned_prison,
-                CASE 
-                    WHEN i.status = 'Active' AND date('now') > date(i.start_date, 
-                         '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
-                         '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
-                         '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') 
-                    THEN 'To be released'
-                    ELSE i.status 
-                END as status,
+                i.status as status,
                 p.name as prison_name,
                 date(i.start_date, 
                      '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
@@ -184,12 +173,17 @@ def get_inmate_by_national_id(national_id: str, db: SessionDep):
                 pi.education_level,
                 NULL as assigned_cell,
                 pi.assigned_prison,
-                'Pending' as status,
+                pi.status as status,
                 p.name as prison_name,
-                NULL as release_date
+                date(pi.start_date, 
+                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
+                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
             FROM pending_inmate pi
             LEFT JOIN prison p ON pi.assigned_prison = p.prison_id
+            LEFT JOIN legal_case lc ON pi.pending_inmate_id = lc.inmate_id
             WHERE pi.national_id = :national_id
+            GROUP BY pi.pending_inmate_id
         )
         LIMIT 1
     """), {"national_id": national_id}).fetchone()
@@ -206,10 +200,10 @@ def create_inmate(request: schemas.PendingInmateCreate, db: SessionDep):
     result = db.execute(text("""
         INSERT INTO pending_inmate (
             national_id, full_name, date_of_birth, gender, nationality, 
-            occupation, start_date, education_level, assigned_prison
+            occupation, start_date, education_level, assigned_prison, status
         ) VALUES (
             :national_id, :full_name, :date_of_birth, :gender, :nationality, 
-            :occupation, :start_date, :education_level, :assigned_prison
+            :occupation, :start_date, :education_level, :assigned_prison, :status
         ) RETURNING *
     """), inmate_data)
     
@@ -236,14 +230,7 @@ def release_inmate(inmate_id: int, db: SessionDep):
     result = db.execute(text("""
         SELECT 
             i.*,
-            CASE 
-                WHEN i.status = 'Active' AND date('now') > date(i.start_date, 
-                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
-                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
-                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') 
-                THEN 'To be released'
-                ELSE i.status 
-            END as status,
+            i.status as status,
             p.name as prison_name,
             date(i.start_date, 
                  '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
@@ -275,14 +262,7 @@ def get_inmates_by_prison(prison_id: int, db: SessionDep):
     inmates = db.execute(text("""
         SELECT 
             i.*,
-            CASE 
-                WHEN i.status = 'Active' AND date('now') > date(i.start_date, 
-                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
-                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
-                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') 
-                THEN 'To be released'
-                ELSE i.status 
-            END as status,
+            i.status as status,
             p.name as prison_name,
             date(i.start_date, 
                  '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
@@ -304,14 +284,7 @@ def get_inmates_by_incident(incident_id: int, db: SessionDep):
     inmates = db.execute(text("""
         SELECT 
             i.*,
-            CASE 
-                WHEN i.status = 'Active' AND date('now') > date(i.start_date, 
-                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
-                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
-                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') 
-                THEN 'To be released'
-                ELSE i.status 
-            END as status,
+            i.status as status,
             p.name as prison_name,
             date(i.start_date, 
                  '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
@@ -359,14 +332,7 @@ def get_inmates_by_manager(manager_national_id: str, db: SessionDep):
                 i.education_level,
                 i.assigned_cell,
                 i.assigned_prison,
-                CASE
-                    WHEN i.status = 'Active' AND date('now') > date(i.start_date,
-                         '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years',
-                         '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months',
-                         '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days')
-                    THEN 'To be released'
-                    ELSE i.status
-                END as status,
+                i.status as status,
                 p.name as prison_name,
                 date(i.start_date,
                      '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years',
@@ -394,14 +360,19 @@ def get_inmates_by_manager(manager_national_id: str, db: SessionDep):
                 pi.education_level,
                 NULL as assigned_cell,
                 pi.assigned_prison,
-                'Pending' as status,
+                pi.status as status,
                 p.name as prison_name,
-                NULL as release_date
+                date(pi.start_date,
+                     '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years',
+                     '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months',
+                     '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
             FROM pending_inmate pi
             LEFT JOIN prison p ON pi.assigned_prison = p.prison_id
+            LEFT JOIN legal_case lc ON pi.pending_inmate_id = lc.inmate_id
             WHERE pi.assigned_prison = :prison_id
+            GROUP BY pi.pending_inmate_id
         )
-        ORDER BY status, full_name
+        ORDER BY inmate_id, full_name
     """), {"prison_id": prison_id}).fetchall()
 
     return [dict(row._mapping) for row in inmates]

@@ -11,6 +11,7 @@ class PendingInmateCreate(SQLModel):
     start_date: date
     education_level: str
     assigned_prison: int | None = None
+    status: str = "Active"
 
 class PendingInmateResponse(SQLModel):
     pending_inmate_id: int
@@ -23,5 +24,7 @@ class PendingInmateResponse(SQLModel):
     start_date: date
     education_level: str
     assigned_prison: int | None = None
+    status: str
     prison_name: str | None = None
+    release_date: date | None = None
 

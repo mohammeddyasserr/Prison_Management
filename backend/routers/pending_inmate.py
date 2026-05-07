@@ -13,9 +13,16 @@ def get_all(db: SessionDep):
     pending_inmates = db.execute(text("""
         SELECT 
             pi.*,
-            p.name as prison_name
+            p.name as prison_name,
+            date(pi.start_date, 
+                 '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
+                 '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
+                 '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
         FROM pending_inmate pi
         LEFT JOIN prison p ON pi.assigned_prison = p.prison_id
+        LEFT JOIN legal_case lc ON pi.pending_inmate_id = lc.inmate_id
+        GROUP BY pi.pending_inmate_id
+        ORDER BY pi.pending_inmate_id, pi.full_name
     """)).fetchall()
     
     return [dict(row._mapping) for row in pending_inmates]
@@ -25,10 +32,16 @@ def get_pending_inmate(pending_inmate_id: int, db: SessionDep):
     result = db.execute(text("""
         SELECT 
             pi.*,
-            p.name as prison_name
+            p.name as prison_name,
+            date(pi.start_date, 
+                 '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
+                 '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
+                 '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
         FROM pending_inmate pi
         LEFT JOIN prison p ON pi.assigned_prison = p.prison_id
+        LEFT JOIN legal_case lc ON pi.pending_inmate_id = lc.inmate_id
         WHERE pi.pending_inmate_id = :pending_inmate_id
+        GROUP BY pi.pending_inmate_id
     """), {"pending_inmate_id": pending_inmate_id}).fetchone()
 
     if not result:
@@ -43,10 +56,10 @@ def create_pending_inmate(request: schemas.PendingInmateCreate, db: SessionDep):
     result = db.execute(text("""
         INSERT INTO pending_inmate (
             national_id, full_name, date_of_birth, gender, nationality, 
-            occupation, start_date, education_level, assigned_prison
+            occupation, start_date, education_level, assigned_prison, status
         ) VALUES (
             :national_id, :full_name, :date_of_birth, :gender, :nationality, 
-            :occupation, :start_date, :education_level, :assigned_prison
+            :occupation, :start_date, :education_level, :assigned_prison, :status
         ) RETURNING *
     """), pending_inmate_data)
     
@@ -57,10 +70,16 @@ def create_pending_inmate(request: schemas.PendingInmateCreate, db: SessionDep):
     new_result = db.execute(text("""
         SELECT 
             pi.*,
-            p.name as prison_name
+            p.name as prison_name,
+            date(pi.start_date, 
+                 '+' || COALESCE(SUM(lc.sentence_duration_years), 0) || ' years', 
+                 '+' || COALESCE(SUM(lc.sentence_duration_months), 0) || ' months', 
+                 '+' || COALESCE(SUM(lc.sentence_duration_days), 0) || ' days') as release_date
         FROM pending_inmate pi
         LEFT JOIN prison p ON pi.assigned_prison = p.prison_id
+        LEFT JOIN legal_case lc ON pi.pending_inmate_id = lc.inmate_id
         WHERE pi.pending_inmate_id = :pending_inmate_id
+        GROUP BY pi.pending_inmate_id
     """), {"pending_inmate_id": pending_inmate_id}).fetchone()
     
     new_pending_inmate = dict(new_result._mapping)
