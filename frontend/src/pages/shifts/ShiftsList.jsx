@@ -19,17 +19,17 @@ useEffect(() => {
     const fetchData = async () => {
       try {
         const prisonId = localStorage.getItem('prison_id');
-        const [shifts, officers, allPrisons] = await Promise.all([
+        const [shifts, officers] = await Promise.all([
           hasRole('admin') || hasRole('manager')
             ? prisonId
               ? fetch(`/api/shift/prison/${prisonId}`).then(r => r.json())
               : fetch('/api/shift').then(r => r.json())
             : fetch(`/api/shift/officer/${localStorage.getItem('userNationalId')}`).then(r => r.json()),
           fetch('/api/staff/officers').then(r => r.json()),
-          fetch('/api/prison').then(r => r.json()),
         ]);
 
-        // Filter prisons to only show relevant ones based on role
+        // Fetch prisons based on role
+        const allPrisons = await fetch('/api/prison').then(r => r.json());
         const prisons = hasRole('admin')
           ? allPrisons
           : prisonId
