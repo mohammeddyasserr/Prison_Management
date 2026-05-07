@@ -25,20 +25,29 @@ export const DisciplinaryForm = () => {
 
     const fetchData = async () => {
       try {
-        const [inmatesRes, incidentsRes] = await Promise.all([
+        const [inmatesRes, incidentsRes, disciplinaryRes] = await Promise.all([
           fetch('/api/inmates', { headers }),
           fetch('/api/incidents', { headers }),
+          fetch('/api/disciplinary', { headers }),
         ]);
         const allInmates = await inmatesRes.json();
         const allIncidents = await incidentsRes.json();
+        const allDisciplinary = await disciplinaryRes.json();
 
         const inmates = prisonId
           ? allInmates.filter(i => String(i.assigned_prison) === String(prisonId))
           : allInmates;
 
-        const incidents = prisonId
+        // Get IDs of incidents already linked to a disciplinary record
+        const linkedIncidentIds = new Set(
+          allDisciplinary.filter(d => d.incident_id).map(d => String(d.incident_id))
+        );
+
+        // Filter out incidents already linked to a disciplinary record
+        const incidents = (prisonId
           ? allIncidents.filter(i => String(i.prison_id) === String(prisonId))
-          : allIncidents;
+          : allIncidents
+        ).filter(i => !linkedIncidentIds.has(String(i.incident_id)));
 
         setData({ inmates, incidents });
       } catch (err) {
@@ -73,7 +82,6 @@ export const DisciplinaryForm = () => {
         punishment_type: formData.punishment_type,
         solitary_days: formData.solitary_days ? parseInt(formData.solitary_days, 10) : null,
         date_imposed: formData.date_imposed,
-        end_date: formData.end_date || null,
         notes: formData.notes,
         imposed_by: formData.imposed_by
       };
@@ -161,16 +169,10 @@ export const DisciplinaryForm = () => {
                 <input type="number" name="solitary_days" value={formData.solitary_days} onChange={handleChange} min="0" max="30" className={styles.formInput} />
               </div>
 
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>Date Imposed *</label>
-                  <input type="date" name="date_imposed" value={formData.date_imposed} onChange={handleChange} required className={styles.formInput} />
-                </div>
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>End Date</label>
-                  <input type="date" name="end_date" value={formData.end_date} onChange={handleChange} className={styles.formInput} />
-                </div>
-              </div>
+              <div className={styles.formGroup}>
+                 <label className={styles.formLabel}>Date Imposed *</label>
+                 <input type="date" name="date_imposed" value={formData.date_imposed} onChange={handleChange} required className={styles.formInput} />
+               </div>
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Notes</label>

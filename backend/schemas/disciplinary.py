@@ -18,7 +18,6 @@ class DisciplinaryCreate(SQLModel):
     punishment_type: str
     solitary_days:   int | None = None
     date_imposed:    date
-    end_date:        str | None = None
     notes:           str | None = None
 
 
