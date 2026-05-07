@@ -67,16 +67,8 @@ class IncidentResponse(SQLModel):
     prison_name:          str | None = None
     reporting_officer:    str
     officer_name:         str | None = None
-    involved_inmate_ids:  list[int] = []
-
-    @field_validator("involved_inmate_ids", mode="before")
-    @classmethod
-    def parse_involved(cls, v):
-        if not v:
-            return []
-        if isinstance(v, str):
-            return [int(i) for i in v.split(",")]
-        return v
+    involved_inmate_ids:  str | None = None
+    involved_inmate_names: str | None = None
 
 # class IncidentResponse(SQLModel):
 #     incident_id:          int

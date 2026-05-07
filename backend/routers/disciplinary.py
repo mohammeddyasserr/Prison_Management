@@ -17,9 +17,10 @@ BASE_SELECT = """
         d.punishment_type,
         d.solitary_days,
         d.date_imposed,
-        DATE(d.date_imposed, '+' || d.solitary_days || ' days') AS end_date,
+        DATE(d.date_imposed, '+' || COALESCE(d.solitary_days, 0) || ' days') AS end_date,
         d.notes,
         im.full_name                                        AS inmate_name,
+        im.assigned_prison                                  AS prison_id,
         o.name                                              AS officer_name
     FROM disciplinary_log d
     LEFT JOIN inmate  im ON im.inmate_id  = d.inmate_id
@@ -47,11 +48,18 @@ def get_log_or_404(inmate_id: int, imposed_by: str, incident_id: int | None, db)
 
 # ------------------------------get all disciplinary logs ---------------------------------------------
 @router.get("", response_model=list[schemas.DisciplinaryResponse], status_code=status.HTTP_200_OK, summary="Get all disciplinary logs")
-def get_all_disciplinary(db: SessionDep):
-    records = db.execute(text(f"""
-        {BASE_SELECT}
-        ORDER BY d.date_imposed DESC
-    """)).fetchall()
+def get_all_disciplinary(db: SessionDep, prison_id: int | None = None):
+    if prison_id:
+        records = db.execute(text(f"""
+            {BASE_SELECT}
+            WHERE im.assigned_prison = :prison_id
+            ORDER BY d.date_imposed DESC
+        """), {"prison_id": prison_id}).fetchall()
+    else:
+        records = db.execute(text(f"""
+            {BASE_SELECT}
+            ORDER BY d.date_imposed DESC
+        """)).fetchall()
     return records
 
 # ------------------------------get disciplinary logs for a specific inmate ---------------------------------------------

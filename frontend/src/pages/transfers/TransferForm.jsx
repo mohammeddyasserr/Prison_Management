@@ -146,7 +146,7 @@ export const TransferForm = () => {
             </div>
 
             <div className={styles.formActions}>
-              <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>Submit Transfer Request</button>
+              <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>Request Transfer</button>
               <Link to="/transfers" className={`${styles.btn} ${styles.btnOutline}`}>Cancel</Link>
             </div>
           </form>
