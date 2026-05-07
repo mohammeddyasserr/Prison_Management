@@ -68,3 +68,34 @@ sentence_duration_years, sentence_duration_months, sentence_duration_days
 ('Burglary', 38, 'Fayoum Court', 4, 0, 0),
 ('Arson', 39, 'Fayoum Court', 10, 0, 0),
 ('Murder', 40, 'Fayoum Court', 18, 0, 0);
+
+-- =========================
+-- Pending inmates
+-- =========================
+
+('Theft', 41, 'Fayoum Court', 1, 0, 0),
+('Fraud', 42, 'Fayoum Court', 2, 0, 0),
+('Robbery', 43, 'Fayoum Court', 6, 0, 0),
+('Assault', 44, 'Fayoum Court', 5, 0, 0),
+('Drug Offense', 45, 'Fayoum Court', 7, 0, 0),
+('Burglary', 46, 'Fayoum Court', 4, 0, 0),
+('Arson', 47, 'Fayoum Court', 10, 0, 0),
+('Murder', 48, 'Fayoum Court', 18, 0, 0);
+('Theft', 49, 'Fayoum Court', 1, 0, 0),
+('Fraud', 50, 'Fayoum Court', 2, 0, 0),
+('Robbery', 51, 'Fayoum Court', 6, 0, 0),
+('Assault', 52, 'Fayoum Court', 5, 0, 0),
+('Drug Offense', 53, 'Fayoum Court', 7, 0, 0),
+('Burglary', 54, 'Fayoum Court', 4, 0, 0),
+('Arson', 55, 'Fayoum Court', 10, 0, 0),
+('Murder', 56, 'Fayoum Court', 18, 0, 0);
+('Burglary', 57, 'Fayoum Court', 4, 0, 0),
+('Arson', 58, 'Fayoum Court', 10, 0, 0),
+('Murder', 59, 'Fayoum Court', 18, 0, 0);
+('Theft', 60, 'Fayoum Court', 1, 0, 0),
+('Fraud', 61, 'Fayoum Court', 2, 0, 0),
+('Robbery', 62, 'Fayoum Court', 6, 0, 0),
+('Assault', 63, 'Fayoum Court', 5, 0, 0),
+('Drug Offense', 64, 'Fayoum Court', 7, 0, 0),
+('Burglary', 65, 'Fayoum Court', 4, 0, 0),
+
