@@ -26,6 +26,8 @@ def get_all(db: SessionDep):
         LEFT JOIN officer o ON s.officer_id = o.national_id
         LEFT JOIN block b ON s.block_id = b.block_id
         LEFT JOIN prison p ON b.prison_id = p.prison_id
+        LEFT JOIN prison p_mgr ON o.national_id = p_mgr.manager_id
+        WHERE p_mgr.manager_id IS NULL
     """)).fetchall()
     
     return [dict(row._mapping) for row in shifts]
@@ -76,7 +78,8 @@ def create_shift(request: schemas.ShiftCreate, db: SessionDep):
         LEFT JOIN officer o ON s.officer_id = o.national_id
         LEFT JOIN block b ON s.block_id = b.block_id
         LEFT JOIN prison p ON b.prison_id = p.prison_id
-        WHERE s.shift_id = :shift_id
+        LEFT JOIN prison p_mgr ON o.national_id = p_mgr.manager_id
+        WHERE s.shift_id = :shift_id AND p_mgr.manager_id IS NULL
     """), {"shift_id": new_shift_id}).fetchone()
     
     return dict(full_shift._mapping)
@@ -98,7 +101,8 @@ def get_shifts_by_block(block_id: int, db: SessionDep):
         LEFT JOIN officer o ON s.officer_id = o.national_id
         LEFT JOIN block b ON s.block_id = b.block_id
         LEFT JOIN prison p ON b.prison_id = p.prison_id
-        WHERE s.block_id = :block_id
+        LEFT JOIN prison p_mgr ON o.national_id = p_mgr.manager_id
+        WHERE s.block_id = :block_id AND p_mgr.manager_id IS NULL
     """), {"block_id": block_id}).fetchall()
     
     return [dict(row._mapping) for row in shifts]
@@ -120,7 +124,8 @@ def get_shifts_by_prison(prison_id: int, db: SessionDep):
         LEFT JOIN officer o ON s.officer_id = o.national_id
         LEFT JOIN block b ON s.block_id = b.block_id
         LEFT JOIN prison p ON b.prison_id = p.prison_id
-        WHERE b.prison_id = :prison_id
+        LEFT JOIN prison p_mgr ON o.national_id = p_mgr.manager_id
+        WHERE b.prison_id = :prison_id AND p_mgr.manager_id IS NULL
     """), {"prison_id": prison_id}).fetchall()
     
     return [dict(row._mapping) for row in shifts]
@@ -142,7 +147,8 @@ def get_shifts_by_officer(officer_id: str, db: SessionDep):
         LEFT JOIN officer o ON s.officer_id = o.national_id
         LEFT JOIN block b ON s.block_id = b.block_id
         LEFT JOIN prison p ON b.prison_id = p.prison_id
-        WHERE s.officer_id = :officer_id
+        LEFT JOIN prison p_mgr ON o.national_id = p_mgr.manager_id
+        WHERE s.officer_id = :officer_id AND p_mgr.manager_id IS NULL
     """), {"officer_id": officer_id}).fetchall()
     
     return [dict(row._mapping) for row in shifts]
@@ -165,7 +171,8 @@ def delete_shift(shift_id: int, db: SessionDep):
         LEFT JOIN officer o ON s.officer_id = o.national_id
         LEFT JOIN block b ON s.block_id = b.block_id
         LEFT JOIN prison p ON b.prison_id = p.prison_id
-        WHERE s.shift_id = :shift_id
+        LEFT JOIN prison p_mgr ON o.national_id = p_mgr.manager_id
+        WHERE s.shift_id = :shift_id AND p_mgr.manager_id IS NULL
     """), {"shift_id": shift_id}).fetchone()
 
     if not full_shift:
