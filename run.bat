@@ -24,13 +24,21 @@ if exist "..\.venv\Scripts\activate.bat" (
 )
 cd ..
 
+echo.
+timeout /t 10 /nobreak >nul
+
 echo Starting React frontend...
 cd frontend
 start "CPMS Frontend" cmd /k "npm run dev"
 cd ..
 
-echo.
-timeout /t 3 /nobreak >nul
+
+echo Running Release Checker...
+if exist ".venv\Scripts\activate.bat" (
+    start "CPMS Release Checker" cmd /k ".venv\Scripts\activate.bat && python check_release.py"
+) else (
+    start "CPMS Release Checker" cmd /k "python check_release.py"
+)
 
 echo =========================================
 echo Backend running at http://127.0.0.1:8000

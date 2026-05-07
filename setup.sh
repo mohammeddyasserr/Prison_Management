@@ -25,6 +25,22 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 echo ""
+echo "--- Environment Variables ---"
+if [ ! -f ".env" ]; then
+    echo "Creating .env file..."
+    cat <<EOF > .env
+MAIL_USERNAME="username"
+MAIL_PASSWORD="**********"
+MAIL_FROM="test@email.com"
+MAIL_PORT=587
+MAIL_SERVER=smtp.gmail.com
+EOF
+    echo "✓ .env file created"
+else
+    echo "✓ .env file already exists"
+fi
+
+echo ""
 echo "--- Frontend Setup ---"
 if ! command -v node &> /dev/null; then
     echo "ERROR: Node.js is not installed. Download from https://nodejs.org/"

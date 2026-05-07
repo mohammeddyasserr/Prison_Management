@@ -8,17 +8,20 @@ if [ ! -d "frontend" ] || [ ! -d "backend" ]; then
     exit 1
 fi
 
-echo "Starting Backend..."
 # Assuming .venv is in root
 if [ -d ".venv" ]; then
     source .venv/bin/activate
 elif [ -d "venv" ]; then
     source venv/bin/activate
 fi
+
+echo "Starting Backend..."
 cd backend
 uvicorn main:app --reload --port 8000 &
 BACKEND_PID=$!
 cd ..
+
+sleep 10
 
 echo "Starting Frontend..."
 cd frontend
@@ -26,7 +29,11 @@ npm run dev &
 FRONTEND_PID=$!
 cd ..
 
-sleep 3
+
+echo "Running Release Checker..."
+python check_release.py
+echo ""
+
 
 echo ""
 echo "========================================="

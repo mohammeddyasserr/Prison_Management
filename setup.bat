@@ -35,6 +35,20 @@ call .venv\Scripts\activate.bat
 pip install -r requirements.txt
 
 echo.
+echo --- Environment Variables ---
+if not exist ".env" (
+    echo Creating .env file...
+    echo MAIL_USERNAME="username">.env
+    echo MAIL_PASSWORD="**********">>.env
+    echo MAIL_FROM="test@email.com">>.env
+    echo MAIL_PORT=587>>.env
+    echo MAIL_SERVER=smtp.gmail.com>>.env
+    echo ✓ .env file created
+) else (
+    echo ✓ .env file already exists
+)
+
+echo.
 echo --- Frontend Setup ---
 echo Checking for Node.js...
 where node >nul 2>nul
