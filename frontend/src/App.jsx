@@ -31,6 +31,7 @@ import { ShiftsList } from './pages/shifts/ShiftsList';
 import { MLPredictions } from './pages/ml/MLPredictions';
 import { MyPrison } from './pages/prisons/MyPrison';
 import { ToastProvider } from './context/ToastContext';
+import './styles/cursor.css';
 
 const DashboardRedirect = () => {
   const role = localStorage.getItem('userRole');
@@ -52,11 +53,11 @@ function App() {
             <Route path="dashboard/superadmin" element={<SuperAdminDashboard />} />
             <Route path="dashboard/manager" element={<ManagerDashboard />} />
             <Route path="dashboard/officer" element={<OfficerDashboard />} />
-            
-             <Route path="prisons" element={<PrisonsList />} />
-             <Route path="prisons/my" element={<MyPrison />} />
-             <Route path="prisons/add" element={<PrisonForm />} />
-             <Route path="prisons/:id" element={<PrisonDetail />} />
+
+            <Route path="prisons" element={<PrisonsList />} />
+            <Route path="prisons/my" element={<MyPrison />} />
+            <Route path="prisons/add" element={<PrisonForm />} />
+            <Route path="prisons/:id" element={<PrisonDetail />} />
             <Route path="prisons/:id/edit" element={<PrisonForm />} />
             <Route path="inmates" element={<InmatesList />} />
             <Route path="inmates/add" element={<InmateForm />} />
@@ -68,9 +69,9 @@ function App() {
             <Route path="transfers/add" element={<TransferForm />} />
             <Route path="visits" element={<VisitsList />} />
             <Route path="visits/slots" element={<VisitSlots />} />
-             <Route path="incidents" element={<IncidentsList />} />
-             <Route path="incidents/add" element={<IncidentForm />} />
-             <Route path="incidents/:id" element={<IncidentDetail />} />
+            <Route path="incidents" element={<IncidentsList />} />
+            <Route path="incidents/add" element={<IncidentForm />} />
+            <Route path="incidents/:id" element={<IncidentDetail />} />
             <Route path="disciplinary" element={<DisciplinaryList />} />
             <Route path="disciplinary/add" element={<DisciplinaryForm />} />
             <Route path="healthcare" element={<HealthcareOverview />} />
