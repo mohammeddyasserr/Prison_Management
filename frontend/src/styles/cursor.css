@@ -1,11 +1,11 @@
 /* ================================
-   PRISON CURSOR SYSTEM (FIXED)
+   PRISON CURSOR SYSTEM
    Cross-browser stable version
-================================ */
+=============================== */
 
 html,
 body {
-    cursor: url("/cursors/prison-pointer.png") 8 8, auto;
+    cursor: url("/cursors/prison-pointer.png"), auto;
 }
 
 /* Ensure override for all elements */
@@ -20,13 +20,13 @@ button,
 [role="button"],
 .clickable,
 div[onClick] {
-    cursor: url("/cursors/prison-hand.png") 8 8, pointer !important;
+    cursor: url("/cursors/prison-hand.png"), pointer !important;
 }
 
 /* Inputs */
 input,
 textarea {
-    cursor: url("/cursors/prison-text.png") 8 8, text;
+    cursor: url("/cursors/prison-text.png"), text;
 }
 
 /* Disabled */
