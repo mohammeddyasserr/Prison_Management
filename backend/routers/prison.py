@@ -173,12 +173,25 @@ def get_prison_blocks_and_cells(id: int, db: SessionDep):
             b.block_id,
             b.security_level,
             COALESCE((
+                SELECT SUM(c.capacity)
+                FROM cell c
+                WHERE c.block_id = b.block_id
+            ), 0) AS total_capacity,
+            COALESCE((
                 SELECT COUNT(*)
                 FROM inmate i
                 JOIN cell c ON i.assigned_cell = c.cell_id
                 WHERE c.block_id = b.block_id
+                  AND i.status != 'Released'
             ), 0) AS total_inmates,
-            (SELECT COUNT(*) FROM cell WHERE block_id = b.block_id) as total_cells
+            (SELECT COUNT(*) FROM cell WHERE block_id = b.block_id) as total_cells,
+            COALESCE((
+                SELECT COUNT(*)
+                FROM inmate i
+                JOIN cell c ON i.assigned_cell = c.cell_id
+                WHERE c.block_id = b.block_id
+                  AND i.status != 'Released'
+            ), 0) AS current_occupancy
         FROM block b
         WHERE b.prison_id = :id
     """), {"id": id}).mappings().fetchall()

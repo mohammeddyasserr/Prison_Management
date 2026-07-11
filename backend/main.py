@@ -20,6 +20,7 @@ from routers import pending_inmate
 from routers import doctor
 from routers import medical_visit
 from routers import authentication
+from routers import overcrowding
 import models
 from schemas.visit import TimeslotCreate
 
@@ -136,3 +137,4 @@ app.include_router(transfer.router)
 app.include_router(incidents.router)
 app.include_router(disciplinary.router)
 app.include_router(authentication.router)
+app.include_router(overcrowding.router)
