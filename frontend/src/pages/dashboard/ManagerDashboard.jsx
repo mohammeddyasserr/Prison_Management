@@ -38,8 +38,15 @@ export const ManagerDashboard = () => {
         // Format blocks for display
         const blocks = blocksCells.map(b => ({
           ...b,
-          occupancy_rate: b.total_cells > 0 ? Math.round((b.total_inmates / b.total_cells) * 100) : 0,
+          current_occupancy: b.current_occupancy ?? b.total_inmates ?? 0,
+          total_capacity: b.total_capacity ?? b.cells?.reduce((sum, cell) => sum + (cell.capacity || 0), 0) ?? 0,
         }));
+
+        blocks.forEach((block) => {
+          block.occupancy_rate = block.total_capacity > 0
+            ? Math.round((block.current_occupancy / block.total_capacity) * 100)
+            : 0;
+        });
 
         setData({ prison, blocks, pending_visits, upcoming_visits, recent_incidents, pending_transfers, upcoming_releases, active_incidents: { count: recent_incidents.length } });
         setLoading(false);
@@ -94,7 +101,7 @@ export const ManagerDashboard = () => {
             <div key={i} className={styles.blockItem}>
               <div className={styles.labelRow}>
                 <span>Block {block.block_id} ({block.security_level})</span>
-                <span className={`${styles.rateValue} ${rateClass}`}>{block.current_occupancy}/{block.capacity} — {block.occupancy_rate}%</span>
+                <span className={`${styles.rateValue} ${rateClass}`}>{block.current_occupancy}/{block.total_capacity} — {block.occupancy_rate}%</span>
               </div>
               <div className={styles.occupancyBar}>
                 <div className={`${styles.occupancyFill} ${rateClass}`} style={{ width: `${block.occupancy_rate}%` }} />
