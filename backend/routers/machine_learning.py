@@ -3,6 +3,14 @@ from sqlmodel import text
 
 from database import SessionDep
 from schemas.ML import InmateRiskResponse, OvercrowdingResponse
+from services.overcrowding_predict import (
+    predict_and_save_prison_overcrowding,
+    predict_and_save_all_prisons_overcrowding,
+)
+from services.risk_predictor import (
+    predict_prison_inmates_risk,
+    predict_all_inmates_risk,
+)
 
 
 router = APIRouter(
@@ -128,3 +136,59 @@ def get_overcrowding_predictions(db: SessionDep, prison_id: int | None = None):
         )
 
     return responses
+
+
+# ---------------------------------------------------------------------------
+# Refresh / re-run ML predictions
+# ---------------------------------------------------------------------------
+
+@router.post("/machine_learning_refresh/{prison_id}")
+def refresh_for_prison(prison_id: int, db: SessionDep):
+    """Re-run both the overcrowding and inmate-risk ML models for a single prison."""
+    errors = []
+
+    overcrowding_result = None
+    try:
+        overcrowding_result = predict_and_save_prison_overcrowding(db, prison_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        errors.append(f"Overcrowding: {e}")
+
+    risk_results = None
+    try:
+        risk_results = predict_prison_inmates_risk(db, prison_id)
+    except Exception as e:
+        errors.append(f"Risk: {e}")
+
+    return {
+        "overcrowding": overcrowding_result,
+        "risk_predictions": risk_results,
+        "errors": errors if errors else None,
+    }
+
+
+@router.post("/machine_learning_refresh")
+def refresh_for_all_prisons(db: SessionDep):
+    """Re-run both the overcrowding and inmate-risk ML models for every prison."""
+    errors = []
+
+    overcrowding_results = None
+    try:
+        overcrowding_results = predict_and_save_all_prisons_overcrowding(db)
+    except Exception as e:
+        errors.append(f"Overcrowding: {e}")
+
+    risk_results = None
+    try:
+        risk_results = predict_all_inmates_risk(db)
+    except Exception as e:
+        errors.append(f"Risk: {e}")
+
+    return {
+        "overcrowding": overcrowding_results,
+        "risk_predictions": risk_results,
+        "errors": errors if errors else None,
+    }
+
+    

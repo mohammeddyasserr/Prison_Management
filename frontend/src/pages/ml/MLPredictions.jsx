@@ -1,75 +1,138 @@
 import React, { useEffect, useState } from 'react';
-import { Eye, TrendingUp, ShieldAlert } from 'lucide-react';
+import { Eye, TrendingUp, ShieldAlert, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import styles from '../PrisonStyles.module.css';
-
 import { hasRole } from '../../services/authentication';
+
+// ---------------------------------------------------------------------------
+// Module-level helpers (no state, safe outside the component)
+// ---------------------------------------------------------------------------
 
 const getRateBadgeClass = (value) =>
   value > 90 ? styles.badgeDanger : value >= 75 ? styles.badgeWarning : styles.badgeSuccess;
 
 const getForecastBadgeClass = (forecast, currentRate) =>
-  forecast > currentRate ? (forecast > 90 ? styles.badgeDanger : styles.badgeWarning) : styles.badgeSuccess;
+  forecast > currentRate
+    ? forecast > 90 ? styles.badgeDanger : styles.badgeWarning
+    : styles.badgeSuccess;
+
+const RISK_TABLE_INITIAL_ROWS = 5;
+
+const getManagerPrisonId = async () => {
+  if (!hasRole('manager')) return null;
+  const nationalId = localStorage.getItem('userNationalId') || '';
+  try {
+    const res = await fetch(`/api/prison/user/${nationalId}`);
+    const json = await res.json();
+    return json?.prison_id ?? null;
+  } catch (e) {
+    return null;
+  }
+};
+
+const loadData = async (setData, setLoading) => {
+  try {
+    const prisonId = await getManagerPrisonId();
+    const query = prisonId ? `?prison_id=${prisonId}` : '';
+    const [riskRes, overcrowdingRes] = await Promise.all([
+      fetch(`/api/ML/risk${query}`).then((r) => r.json()),
+      fetch(`/api/ML/overcrowding${query}`).then((r) => r.json()),
+    ]);
+
+    const risk_scores = (riskRes || []).map((item) => ({
+      inmate_id: item.inmate_id,
+      name: item.full_name,
+      score: item.recidivism ?? 0,
+      level: item.risk_level || 'Low',
+    }));
+
+    const overcrowding = (overcrowdingRes || []).map((item) => ({
+      prison_id: item.prison_id,
+      name: item.prison_name,
+      current_rate: item.current_rate,
+      forecast_30: item.forecast_rate_30,
+      forecast_60: item.forecast_rate_60,
+      forecast_90: item.forecast_rate_90,
+      current_occupancy: item.current_occupancy,
+      total_capacity: item.total_capacity,
+    }));
+
+    setData({ risk_scores, overcrowding });
+  } catch (e) {
+    console.error('Failed to load ML data:', e);
+  } finally {
+    if (setLoading) setLoading(false);
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 export const MLPredictions = () => {
   const [data, setData] = useState({ risk_scores: [], overcrowding: [] });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showAllRiskScores, setShowAllRiskScores] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        let prisonId;
-        if (hasRole('manager')) {
-          const nationalId = localStorage.getItem('userNationalId') || '';
-          const prisonRes = await fetch(`/api/prison/user/${nationalId}`);
-          const prisonData = await prisonRes.json();
-          prisonId = prisonData?.prison_id;
-        }
-
-        const query = prisonId ? `?prison_id=${prisonId}` : '';
-        const [riskResponse, overcrowdingResponse] = await Promise.all([
-          fetch(`/api/ML/risk${query}`).then((r) => r.json()),
-          fetch(`/api/ML/overcrowding${query}`).then((r) => r.json()),
-        ]);
-
-        const risk_scores = (riskResponse || []).map((item) => ({
-          inmate_id: item.inmate_id,
-          name: item.full_name,
-          score: item.recidivism ?? 0,
-          level: item.risk_level || 'Low',
-        }));
-
-        const overcrowding = (overcrowdingResponse || []).map((item) => ({
-          prison_id: item.prison_id,
-          name: item.prison_name,
-          current_rate: item.current_rate,
-          forecast_30: item.forecast_rate_30,
-          forecast_60: item.forecast_rate_60,
-          forecast_90: item.forecast_rate_90,
-          current_occupancy: item.current_occupancy,
-          total_capacity: item.total_capacity,
-        }));
-
-        setData({ risk_scores, overcrowding });
-        setLoading(false);
-      } catch {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    loadData(setData, setLoading);
   }, []);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const prisonId = await getManagerPrisonId();
+      const url = prisonId
+        ? `/api/ML/machine_learning_refresh/${prisonId}`
+        : '/api/ML/machine_learning_refresh';
+      await fetch(url, { method: 'POST' });
+      await loadData(setData, null);
+      setShowAllRiskScores(false);
+    } catch (e) {
+      console.error('Refresh failed:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   if (loading) return <div className={styles.emptyState}>Loading ML Predictions...</div>;
+
+  const visibleRiskScores = showAllRiskScores
+    ? data.risk_scores
+    : data.risk_scores.slice(0, RISK_TABLE_INITIAL_ROWS);
+  const hasMoreRiskScores = data.risk_scores.length > RISK_TABLE_INITIAL_ROWS;
 
   return (
     <div className={styles.prisonContainer}>
       <div className={styles.prisonContent}>
-        <div className={styles.prisonHeader}>
-          <h1 className={styles.prisonTitle}>ML Predictions</h1>
-          <p className={styles.prisonSubtitle}>AI-powered insights for prison management</p>
-        </div>
 
+        {/* Header */}
+        <div
+          className={styles.prisonHeader}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}
+        >
+          <div>
+            <h1 className={styles.prisonTitle}>ML Predictions</h1>
+            <p className={styles.prisonSubtitle}>AI-powered insights for prison management</p>
+          </div>
+          <button
+            id="btn-refresh-predictions"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '170px', justifyContent: 'center' }}
+          >
+            <RefreshCw
+              size={15}
+              style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }}
+            />
+            {refreshing ? 'Refreshing...' : 'Refresh Predictions'}
+          </button>
+        </div>
+        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+
+        {/* Risk table */}
         <div className={styles.ledger} style={{ marginBottom: '22px' }}>
           <div className={styles.ledgerPinLeft} />
           <div className={styles.ledgerPinRight} />
@@ -96,7 +159,7 @@ export const MLPredictions = () => {
                 </tr>
               </thead>
               <tbody>
-                {data.risk_scores.length > 0 ? data.risk_scores.map((r, i) => (
+                {visibleRiskScores.length > 0 ? visibleRiskScores.map((r, i) => (
                   <tr key={i}>
                     <td style={{ textAlign: 'center' }}>{r.name}</td>
                     <td style={{ textAlign: 'center' }}>
@@ -128,8 +191,23 @@ export const MLPredictions = () => {
               </tbody>
             </table>
           </div>
+          {hasMoreRiskScores && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '14px' }}>
+              <button
+                type="button"
+                onClick={() => setShowAllRiskScores((prev) => !prev)}
+                className={`${styles.btn} ${styles.btnOutline}`}
+                style={{ minHeight: '32px', padding: '4px 16px', fontSize: '0.78rem' }}
+              >
+                {showAllRiskScores
+                  ? 'Show less'
+                  : `Show all (${data.risk_scores.length - RISK_TABLE_INITIAL_ROWS} more)`}
+              </button>
+            </div>
+          )}
         </div>
 
+        {/* Overcrowding table */}
         <div className={styles.ledger} style={{ marginBottom: '22px' }}>
           <div className={styles.ledgerPinLeft} />
           <div className={styles.ledgerPinRight} />
@@ -197,6 +275,7 @@ export const MLPredictions = () => {
             </table>
           </div>
         </div>
+
       </div>
     </div>
   );
