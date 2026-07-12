@@ -1,17 +1,21 @@
-import sys
 import os
 import pandas as pd
 import numpy as np
 import joblib
-from fastapi import APIRouter, Depends, status, HTTPException
-from sqlmodel import select, text
-import schemas
+from fastapi import APIRouter, HTTPException
+from sqlmodel import text
 from schemas.ML import overcrowding_response
 from database import SessionDep
 from typing import List
 from datetime import datetime, date, timedelta
 import statistics
 from sklearn.base import BaseEstimator, TransformerMixin
+
+
+router = APIRouter(
+    prefix="/ML/predict",
+    tags=["Machine Learning"]
+)
 
 # Define the custom Transformer to match the one used during training
 class FeatureEngineering(BaseEstimator, TransformerMixin):
@@ -42,10 +46,7 @@ except Exception as e:
     print(f"Warning: Could not load overcrowding model: {e}")
     overcrowding_model = None
 
-router = APIRouter(
-    prefix="/ML/overcrowding",
-    tags=["Machine Learning"]
-)
+
 
 def add_duration(start_date: date, years: int, months: int, days: int) -> date:
     y = start_date.year + years
@@ -206,7 +207,63 @@ def calculate_prison_features(prison_id: int, db: SessionDep) -> dict:
         "Occupancy_90_Days_Ago": occ_90_ago
     }
 
-@router.get("/{prison_id}", response_model=overcrowding_response)
+def build_overcrowding_response(prison_id: int, features: dict, preds: np.ndarray) -> overcrowding_response:
+    return overcrowding_response(
+        prison_id=prison_id,
+        occupancy=features["Capacity"],
+        current_occupancy=features["Current_Occupancy"],
+        occupancy_after_30_Days=max(0, int(round(preds[0]))),
+        occupancy_after_60_Days=max(0, int(round(preds[1]))),
+        occupancy_after_90_Days=max(0, int(round(preds[2]))),
+    )
+
+
+def save_overcrowding_prediction(db: SessionDep, prison_id: int, response: overcrowding_response) -> None:
+    existing = db.execute(
+        text("SELECT 1 FROM overcrowding WHERE prison_id = :pid LIMIT 1"),
+        {"pid": prison_id},
+    ).fetchone()
+
+    values = {
+        "pid": prison_id,
+        "p30": response.occupancy_after_30_Days,
+        "p60": response.occupancy_after_60_Days,
+        "p90": response.occupancy_after_90_Days,
+    }
+
+    if existing:
+        db.execute(
+            text("""
+                UPDATE overcrowding
+                SET occupancy_next_30_days = :p30,
+                    occupancy_next_60_days = :p60,
+                    occupancy_next_90_days = :p90
+                WHERE prison_id = :pid
+            """),
+            values,
+        )
+    else:
+        db.execute(
+            text("""
+                INSERT INTO overcrowding (
+                    prison_id,
+                    occupancy_next_30_days,
+                    occupancy_next_60_days,
+                    occupancy_next_90_days
+                ) VALUES (
+                    :pid,
+                    :p30,
+                    :p60,
+                    :p90
+                )
+            """),
+            values,
+        )
+
+    db.commit()
+
+
+@router.post("/overcrowding/{prison_id}", response_model=overcrowding_response)
 def get_overcrowding_prediction(prison_id: int, db: SessionDep):
     if overcrowding_model is None:
         raise HTTPException(status_code=500, detail="Machine Learning model could not be loaded")
@@ -215,17 +272,13 @@ def get_overcrowding_prediction(prison_id: int, db: SessionDep):
     df = pd.DataFrame([features])
     
     preds = overcrowding_model.predict(df)[0]
-    
-    return overcrowding_response(
-        prison_id=prison_id,
-        occupancy=features["Capacity"],
-        current_occupancy=features["Current_Occupancy"],
-        occupancy_after_30_Days=max(0, int(round(preds[0]))),
-        occupancy_after_60_Days=max(0, int(round(preds[1]))),
-        occupancy_after_90_Days=max(0, int(round(preds[2])))
-    )
 
-@router.get("", response_model=List[overcrowding_response])
+    response = build_overcrowding_response(prison_id, features, preds)
+    save_overcrowding_prediction(db, prison_id, response)
+    return response
+
+
+@router.post("/overcrowding", response_model=List[overcrowding_response])
 def get_all_overcrowding_predictions(db: SessionDep):
     if overcrowding_model is None:
         raise HTTPException(status_code=500, detail="Machine Learning model could not be loaded")
@@ -238,17 +291,10 @@ def get_all_overcrowding_predictions(db: SessionDep):
             features = calculate_prison_features(pid, db)
             df = pd.DataFrame([features])
             preds = overcrowding_model.predict(df)[0]
-            
-            responses.append(
-                overcrowding_response(
-                    prison_id=pid,
-                    occupancy=features["Capacity"],
-                    current_occupancy=features["Current_Occupancy"],
-                    occupancy_after_30_Days=max(0, int(round(preds[0]))),
-                    occupancy_after_60_Days=max(0, int(round(preds[1]))),
-                    occupancy_after_90_Days=max(0, int(round(preds[2])))
-                )
-            )
+            response = build_overcrowding_response(pid, features, preds)
+            save_overcrowding_prediction(db, pid, response)
+
+            responses.append(response)
         except Exception as e:
             # If one prison fails, skip it and continue processing the rest
             print(f"Error predicting for prison {pid}: {e}")

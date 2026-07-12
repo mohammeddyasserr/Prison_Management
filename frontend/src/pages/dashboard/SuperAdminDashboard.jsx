@@ -12,17 +12,6 @@ const getRateTone = (rate) => {
   return styles.green;
 };
 
-const hasInvolvedInmate = (incident, inmateId) => {
-  const involved = incident.involved_inmate_ids;
-  if (Array.isArray(involved)) {
-    return involved.some((id) => String(id) === String(inmateId));
-  }
-  if (typeof involved === 'string') {
-    return involved.split(',').some((id) => id.trim() === String(inmateId));
-  }
-  return false;
-};
-
 const TallyMarks = ({ count }) => {
   const groups = Math.floor(count / 5);
   const rem = count % 5;
@@ -207,15 +196,15 @@ export const SuperAdminDashboard = () => {
       fetch('/api/prison').then((r) => r.json()).catch(() => []),
       fetch('/api/transfer').then((r) => r.json()).catch(() => []),
       fetch('/api/incidents').then((r) => r.json()).catch(() => []),
-      fetch('/api/inmates').then((r) => r.json()).catch(() => []),
+      fetch('/api/ML/risk').then((r) => r.json()).catch(() => []),
     ])
-      .then(([prisons, transfers, incidents, inmates]) => {
+      .then(([prisons, transfers, incidents, riskRows]) => {
         if (!isMounted) return;
 
         const prisonRows = Array.isArray(prisons) ? prisons : [];
         const transferRows = Array.isArray(transfers) ? transfers : [];
         const incidentRows = Array.isArray(incidents) ? incidents : [];
-        const inmateRows = Array.isArray(inmates) ? inmates : [];
+        const riskRowsData = Array.isArray(riskRows) ? riskRows : [];
 
         const prisonIncidentCounts = incidentRows.reduce((counts, incident) => {
           if (incident.prison_id) {
@@ -234,13 +223,9 @@ export const SuperAdminDashboard = () => {
         });
 
         const alerts = enhancedPrisons.filter((prison) => prison.rate > 90);
-        const highRisk = inmateRows
-          .map((inmate) => ({
-            ...inmate,
-            incident_count: incidentRows.filter((incident) => hasInvolvedInmate(incident, inmate.inmate_id)).length,
-          }))
-          .filter((inmate) => inmate.incident_count >= 2)
-          .sort((a, b) => b.incident_count - a.incident_count);
+        const highRisk = riskRowsData
+          .filter((inmate) => inmate.risk_level === 'High')
+          .sort((a, b) => (b.recidivism || 0) - (a.recidivism || 0));
 
         setData({
           prisons: enhancedPrisons,
@@ -439,7 +424,9 @@ export const SuperAdminDashboard = () => {
                 {data.highRisk.slice(0, 6).map((inmate) => (
                   <div key={`${inmate.source || 'inmate'}-${inmate.inmate_id}`} className={styles.riskItem}>
                     <span>{inmate.full_name}</span>
-                    <strong>{inmate.incident_count} incidents</strong>
+                        <strong className={`${styles.badge} ${styles.badgeDanger}`}>
+                          {inmate.risk_level}
+                        </strong>
                   </div>
                 ))}
               </div>
