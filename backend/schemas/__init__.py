@@ -18,6 +18,7 @@ from .transfer import TransferCreate, TransferUpdate, TransferResponse
 from .incidents import IncidentResponse, IncidentCreate, IncidentUpdate
 from .disciplinary import DisciplinaryResponse, DisciplinaryCreate, DisciplinaryUpdate
 from .login import UserLogin
+from .ML import InmateRiskResponse, OvercrowdingResponse, overcrowding_response
 
 __all__ = [
     "PrisonCreate", "PrisonResponse",
