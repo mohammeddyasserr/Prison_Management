@@ -4,6 +4,7 @@ import schemas
 import models
 from database import SessionDep
 from routers.disciplinary import _ensure_inmate_or_pending_exists
+from ai_predictor import predict_inmate_risk, save_inmate_risk
 
 router = APIRouter(
     prefix="/incidents",
@@ -182,14 +183,16 @@ def create_incident(request: schemas.IncidentCreate, db: SessionDep):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Officer {request.reporting_officer} not found")
 
+    block_security_level = "Unknown"
     if request.block_id:
-        block = db.execute(
-            text("SELECT block_id FROM block WHERE block_id = :id"),
+        block_row = db.execute(
+            text("SELECT block_id, security_level FROM block WHERE block_id = :id"),
             {"id": request.block_id}
         ).fetchone()
-        if not block:
+        if not block_row:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Block {request.block_id} not found")
+        block_security_level = block_row[1]
 
     result = db.execute(text("""
         INSERT INTO incident (
@@ -216,6 +219,11 @@ def create_incident(request: schemas.IncidentCreate, db: SessionDep):
             INSERT OR IGNORE INTO incident_involvement (incident_id, inmate_id)
             VALUES (:incident_id, :inmate_id)
         """), {"incident_id": new_id, "inmate_id": iid})
+
+        prediction = predict_inmate_risk(db, iid, block_security_level)
+        print(f"Predicted risk for inmate {iid}: {prediction}")
+        if prediction["risk_level"] is not None and prediction["recidivism"] is not None:
+            save_inmate_risk(db, iid, prediction["risk_level"], prediction["recidivism"])
 
     db.commit()
     return get_incident(new_id, db)
