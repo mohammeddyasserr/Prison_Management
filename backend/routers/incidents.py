@@ -4,7 +4,7 @@ import schemas
 import models
 from database import SessionDep
 from routers.disciplinary import _ensure_inmate_or_pending_exists
-from ai_predictor import predict_inmate_risk, save_inmate_risk
+from services.risk_predictor import predict_inmate_risk, save_inmate_risk
 
 router = APIRouter(
     prefix="/incidents",
