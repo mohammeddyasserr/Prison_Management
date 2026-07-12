@@ -7,8 +7,9 @@ from sqlmodel import text
 from database import SessionDep
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RISK_BEHAVIOR_MODEL_PATH = os.path.join(BASE_DIR, "ai_service", "models", "risk_behavior_pipeline.pkl")
-RECIDIVISM_MODEL_PATH = os.path.join(BASE_DIR, "ai_service", "models", "recidivism_score_pipeline.pkl")
+ROOT_DIR = os.path.dirname(BASE_DIR)
+RISK_BEHAVIOR_MODEL_PATH = os.path.join(ROOT_DIR, "ai_service", "models", "risk_behavior_pipeline.pkl")
+RECIDIVISM_MODEL_PATH = os.path.join(ROOT_DIR, "ai_service", "models", "recidivism_score_pipeline.pkl")
 
 RISK_LEVEL_MAP = {
     0: "High",
@@ -26,21 +27,21 @@ def _load_models():
     if _models_loaded:
         return
 
-    print(f"Loading AI models from: {BASE_DIR}")
+    print(f"Loading AI models from root: {ROOT_DIR}")
     print(f"Risk behavior model path: {RISK_BEHAVIOR_MODEL_PATH}")
     print(f"Recidivism model path: {RECIDIVISM_MODEL_PATH}")
     print(f"Risk behavior model exists: {os.path.exists(RISK_BEHAVIOR_MODEL_PATH)}")
     print(f"Recidivism model exists: {os.path.exists(RECIDIVISM_MODEL_PATH)}")
 
     try:
-        _risk_behavior_model = joblib.load('../ai_service/models/risk_behavior_pipeline.pkl')
+        _risk_behavior_model = joblib.load(RISK_BEHAVIOR_MODEL_PATH)
         print("Risk behavior model loaded successfully")
     except Exception as e:
         print(f"Failed to load risk behavior model: {e}")
         traceback.print_exc()
 
     try:
-        _recidivism_model = joblib.load('../ai_service/models/recidivism_score_pipeline.pkl')
+        _recidivism_model = joblib.load(RECIDIVISM_MODEL_PATH)
         print("Recidivism model loaded successfully")
     except Exception as e:
         print(f"Failed to load recidivism model: {e}")
@@ -48,6 +49,7 @@ def _load_models():
 
     _models_loaded = True
     print(f"Models loaded - Risk Behavior: {_risk_behavior_model is not None}, Recidivism: {_recidivism_model is not None}")
+
 
 
 def _get_inmate_features(db: SessionDep, inmate_id: int) -> dict:
@@ -226,3 +228,50 @@ def save_inmate_risk(db: SessionDep, inmate_id: int, risk_level: str, recidivism
             INSERT INTO inmates_risk (inmate_id, risk_level, recidivism)
             VALUES (:id, :risk_level, :recidivism)
         """), {"id": inmate_id, "risk_level": risk_level, "recidivism": recidivism})
+
+
+def predict_prison_inmates_risk(db: SessionDep, prison_id: int) -> list[dict]:
+    _load_models()
+
+    inmates = db.execute(text("""
+        SELECT i.inmate_id, b.security_level
+        FROM inmate i
+        LEFT JOIN cell c ON i.assigned_cell = c.cell_id
+        LEFT JOIN block b ON c.block_id = b.block_id
+        WHERE i.assigned_prison = :prison_id AND i.status != 'Released'
+    """), {"prison_id": prison_id}).fetchall()
+
+    predictions = []
+    for inmate_id, b_sec in inmates:
+        block_sec = b_sec if b_sec else "Unknown"
+        pred = predict_inmate_risk(db, inmate_id, block_sec)
+        if pred["risk_level"] is not None and pred["recidivism"] is not None:
+            save_inmate_risk(db, inmate_id, pred["risk_level"], pred["recidivism"])
+        predictions.append(pred)
+
+    db.commit()
+    return predictions
+
+
+def predict_all_inmates_risk(db: SessionDep) -> list[dict]:
+    _load_models()
+
+    inmates = db.execute(text("""
+        SELECT i.inmate_id, b.security_level
+        FROM inmate i
+        LEFT JOIN cell c ON i.assigned_cell = c.cell_id
+        LEFT JOIN block b ON c.block_id = b.block_id
+        WHERE i.status != 'Released'
+    """)).fetchall()
+
+    predictions = []
+    for inmate_id, b_sec in inmates:
+        block_sec = b_sec if b_sec else "Unknown"
+        pred = predict_inmate_risk(db, inmate_id, block_sec)
+        if pred["risk_level"] is not None and pred["recidivism"] is not None:
+            save_inmate_risk(db, inmate_id, pred["risk_level"], pred["recidivism"])
+        predictions.append(pred)
+
+    db.commit()
+    return predictions
+
